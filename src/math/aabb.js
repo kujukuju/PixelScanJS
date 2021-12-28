@@ -21,10 +21,7 @@ class AABB extends Array {
         return this;
     }
 
-    add(x, y) {
-        this[0] += x;
-        this[1] += y;
+    contains(x, y) {
+        return (x >= this[0]) && (y >= this[1]) && (x - this[0] < this[2]) && (y - this[1] < this[3]);
     }
-
-    
 }

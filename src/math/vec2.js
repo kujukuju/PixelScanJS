@@ -1,4 +1,4 @@
-class Vec extends Array {
+class Vec2 extends Array {
     constructor(x, y) {
         super(2);
 
@@ -7,7 +7,7 @@ class Vec extends Array {
     }
 
     static copy(vec) {
-        return new Vec(vec[0], vec[1]);
+        return new Vec2(vec[0], vec[1]);
     }
 
     copy(vec) {
