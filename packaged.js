@@ -1,17 +1,4 @@
-const PixelScanJS = {
-        gravity: null,
-        resolve_physics: (aabb, velocity) => {
-
-        },
-        create_world: (width, height) => {
-            PixelScanJS.gravity = new Vec2(0, 0.5);
-            PixelScanJS.world = new Array(width * height);
-        },
-        fill_world: (x, y, width, height, data) => {
-            console.log(this, PixelScanJS);
-        },
-        world: null,
-};
+const PixelScan = (function() {
 class AABB extends Array {
     constructor(x, y, width, height) {
         super(4);
@@ -138,16 +125,41 @@ class Vec2 extends Array {
         return (0.5 - this.dot(vec) / 2.0) * sign;
     }
 }
-const PixelUtilities = {
-    extract: (application, texture) => {
-        const renderTexture = PIXI.RenderTexture.create({width: texture.width, height: texture.height});
-        const sprite = new PIXI.Sprite(texture);
+const extract = (application, texture) => {
+    const renderTexture = PIXI.RenderTexture.create({width: texture.width, height: texture.height});
+    const sprite = new PIXI.Sprite(texture);
 
-        application.renderer.render(sprite, renderTexture);
-        const pixels = application.renderer.plugins.extract.pixels(renderTexture);
+    application.renderer.render(sprite, renderTexture);
+    const pixels = application.renderer.plugins.extract.pixels(renderTexture);
 
-        renderTexture.destroy();
+    renderTexture.destroy();
 
-        return pixels;
-    },
+    return pixels;
 };
+let gravity = null;
+let world = null;
+
+const resolvePhysics = (aabb, velocity) => {
+
+};
+
+const createWorld = (width, height) => {
+    PixelScanJS.gravity = new Vec2(0, 0.5);
+    PixelScanJS.world = new Array(width * height);
+};
+
+const fillWorld = (x, y, width, height, data) => {
+    console.log(this, PixelScanJS);
+};
+const PixelScan = {
+    AABB,
+    Vec2,
+    gravity,
+    world,
+    resolvePhysics,
+    createWorld,
+    fillWorld,
+    extract,
+};
+return PixelScan;
+})();

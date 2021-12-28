@@ -30,18 +30,24 @@ const read = (file) => {
 const write = () => {
     const file = path.join(__dirname, 'packaged.js');
 
-    let data = '';
-    for (const file in watched) {
+    let data = 'const PixelScan = (function() {';
+    data += '\n';
+
+    // move main.js to the end
+    const files = Object.keys(watched);
+    const mainIndex = files.findIndex(file => file.endsWith('main.js'));
+    const mainElement = files.splice(mainIndex, 1);
+    files.push(mainElement[0]);
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+
         data += watched[file];
         data += '\n';
     }
 
-    const keys = {};
-    (function() {
-        eval(data);
-
-        console.log(this);
-    })();
+    data += 'return PixelScan;';
+    data += '\n';
+    data += '})();';
 
     fs.writeFileSync(file, data);
 
