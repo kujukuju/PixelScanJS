@@ -1,45 +1,46 @@
-class Vec2 extends Array {
-    constructor(x, y) {
-        super(2);
+class Vec2 {
+    x;
+    y;
 
-        this[0] = x || 0;
-        this[1] = y || 0;
+    constructor(x, y) {
+        this.x = x || 0;
+        this.y = y || 0;
     }
 
     static copy(vec) {
-        return new Vec2(vec[0], vec[1]);
+        return new Vec2(vec.x, vec.y);
     }
 
     copy(vec) {
-        this[0] = vec[0];
-        this[1] = vec[1];
+        this.x = vec.x;
+        this.y = vec.y;
 
         return this;
     }
 
     multiply(mat) {
-        const x = this[0] * mat[0] + this[1] * mat[3] + mat[6];
-        const y = this[0] * mat[1] + this[1] * mat[4] + mat[7];
-        this[0] = x;
-        this[1] = y;
+        const x = this.x * mat.v0 + this.y * mat.v3 + mat.v6;
+        const y = this.x * mat.v1 + this.y * mat.v4 + mat.v7;
+        this.x = x;
+        this.y = y;
 
         return this;
     }
 
     magnitude() {
-        return Math.sqrt(this[0] * this[0] + this[1] * this[1]);
+        return Math.sqrt(this.x * this.x + this.y * this.y);
     }
 
     magnitudeSquared() {
-        return this[0] * this[0] + this[1] * this[1];
+        return this.x * this.x + this.y * this.y;
     }
 
     rotate(radians) {
-        const x = this[0];
-        const y = this[1];
+        const x = this.x;
+        const y = this.y;
 
-        this[0] = x * Math.cos(radians) - y * Math.sin(radians);
-        this[1] = y * Math.cos(radians) + x * Math.sin(radians);
+        this.x = x * Math.cos(radians) - y * Math.sin(radians);
+        this.y = y * Math.cos(radians) + x * Math.sin(radians);
 
         return this;
     }
@@ -50,41 +51,41 @@ class Vec2 extends Array {
             return;
         }
 
-        this[0] /= length;
-        this[1] /= length;
+        this.x /= length;
+        this.y /= length;
     }
 
     distance(vec) {
-        const dx = vec[0] - this[0];
-        const dy = vec[1] - this[1];
+        const dx = vec.x - this.x;
+        const dy = vec.y - this.y;
 
         return Math.sqrt(dx * dx + dy * dy);
     }
 
     distanceSquared(vec) {
-        const dx = vec[0] - this[0];
-        const dy = vec[1] - this[1];
+        const dx = vec.x - this.x;
+        const dy = vec.y - this.y;
 
         return dx * dx + dy * dy;
     }
 
     negate() {
-        this[0] = -this[0];
-        this[1] = -this[1];
+        this.x = -this.x;
+        this.y = -this.y;
 
         return this;
     }
 
     atan2() {
-        return Math.atan2(this[1], this[0]);
+        return Math.atan2(this.y, this.x);
     }
 
     dot(vec) {
-        return this[0] * vec[0] + this[1] * vec[1];
+        return this.x * vec.x + this.y * vec.y;
     }
 
     cross(vec) {
-        return this[0] * vec[1] - vec[0] * this[1];
+        return this.x * vec.y - vec.x * this.y;
     }
 
     // returns a number between -1 and 1,

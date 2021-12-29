@@ -20,6 +20,7 @@ class FramedSprite extends PIXI.Sprite {
 
             this.textures[i] = new PIXI.Texture(texture, new PIXI.Rectangle(x, y, width, height));
         }
+
         this.texture = this.textures[0];
 
         this.animations = {};
@@ -52,13 +53,18 @@ class FramedSprite extends PIXI.Sprite {
         if (this.animations[this.currentName]) {
             this.currentFrame = this.currentFrame % this.animations[this.currentName].count;
         } else {
-            this.currentFrame = this.currentframe
+            this.currentFrame = this.currentFrame
         }
 
         this.updateFrame();
     }
 
     stepAnimation(name, frames) {
+        if (Number.isNaN(name)) {
+            frames = name;
+            name = undefined;
+        }
+
         if (this.currentName !== name) {
             if (!this.animations[this.currentName] || !this.animations[this.currentName].linked[name]) {
                 this.currentFrame = 0;
@@ -71,7 +77,7 @@ class FramedSprite extends PIXI.Sprite {
         if (this.animations[this.currentName]) {
             this.currentFrame = (this.currentFrame + frames) % this.animations[this.currentName].count;
         } else {
-            this.currentFrame = (this.currentframe + frames) % this.textures.length;
+            this.currentFrame = (this.currentFrame + frames) % this.textures.length;
         }
 
         this.updateFrame();
