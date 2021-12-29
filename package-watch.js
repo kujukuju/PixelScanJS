@@ -28,7 +28,7 @@ const read = (file) => {
 };
 
 const write = () => {
-    const file = path.join(__dirname, 'packaged.js');
+    const file = path.join(__dirname, 'pixelscan.js');
 
     let data = 'const PixelScan = (function() {';
     data += '\n';
@@ -65,7 +65,7 @@ const loop = () => {
 
     setTimeout(() => {
         loop();
-    }, 200);
+    }, 2000);
 };
 
 loop();

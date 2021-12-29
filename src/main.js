@@ -1,4 +1,5 @@
 const PixelScan = {
+    FramedSprite,
     AABB,
     Vec2,
     gravity,
