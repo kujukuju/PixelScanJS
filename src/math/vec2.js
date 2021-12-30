@@ -18,18 +18,34 @@ class Vec2 {
         return this;
     }
 
-    multiply(mat) {
-        const x = this.x * mat.v0 + this.y * mat.v3 + mat.v6;
-        const y = this.x * mat.v1 + this.y * mat.v4 + mat.v7;
-        this.x = x;
-        this.y = y;
+    add(vec) {
+        this.x += vec.x;
+        this.y += vec.y;
 
         return this;
     }
 
+    multiply(mat) {
+        if (Number.isNaN(mat)) {
+            const x = this.x * mat.v0 + this.y * mat.v3 + mat.v6;
+            const y = this.x * mat.v1 + this.y * mat.v4 + mat.v7;
+            this.x = x;
+            this.y = y;
+        } else {
+            this.x *= mat;
+            this.y *= mat;
+        }
+
+        return this;
+    }
+
+    mul = this.multiply;
+
     magnitude() {
         return Math.sqrt(this.x * this.x + this.y * this.y);
     }
+
+    length = this.magnitude;
 
     magnitudeSquared() {
         return this.x * this.x + this.y * this.y;
@@ -53,7 +69,11 @@ class Vec2 {
 
         this.x /= length;
         this.y /= length;
+
+        return this;
     }
+
+    norm = this.normalize;
 
     distance(vec) {
         const dx = vec.x - this.x;
@@ -62,12 +82,16 @@ class Vec2 {
         return Math.sqrt(dx * dx + dy * dy);
     }
 
+    dist = this.distance;
+
     distanceSquared(vec) {
         const dx = vec.x - this.x;
         const dy = vec.y - this.y;
 
         return dx * dx + dy * dy;
     }
+
+    distSquared = this.distanceSquared;
 
     negate() {
         this.x = -this.x;
@@ -97,4 +121,19 @@ class Vec2 {
         const sign = Math.sign(this.cross(vec)) || 1;
         return (0.5 - this.dot(vec) / 2.0) * sign;
     }
+
+    projectOnto(vec) {
+        tempVec.copy(vec);
+        tempVec.normalize();
+
+        const top = this.dot(tempVec);
+        const bottom = tempVec.dot(tempVec);
+
+        this.copy(tempVec);
+        this.multiply(top / bottom);
+
+        return this;
+    }
 }
+
+tempVec = new Vec2();

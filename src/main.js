@@ -2,10 +2,8 @@ const PixelScan = {
     FramedSprite,
     AABB,
     Vec2,
-    gravity,
-    world,
-    resolvePhysics,
-    createWorld,
-    fillWorld,
+    Input,
+    World,
+    GroundController,
     extract,
 };

@@ -5,7 +5,32 @@ const path = require('path');
 //     path: contents,
 // }
 const watched = {};
-let changed = false;
+// let changed = false;
+let writeQueued = false;
+
+const queueWrite = () => {
+    if (writeQueued) {
+        return;
+    }
+    writeQueued = true;
+
+    setTimeout(() => {
+        writeQueued = false;
+        write();
+    }, 50);
+};
+
+const clear = () => {
+    for (const path in watched) {
+        if (!fs.existsSync(path)) {
+            delete watched[path];
+            // changed = true;
+            queueWrite();
+
+            console.log('File deleted: ', file);
+        }
+    }
+};
 
 const read = (file) => {
     if (fs.lstatSync(file).isDirectory()) {
@@ -16,13 +41,23 @@ const read = (file) => {
     } else if (!watched[file]) {
         // add the file, mark as changed, then wait for real changes
         watched[file] = String(fs.readFileSync(file));
-        changed = true;
+        // changed = true;
+        queueWrite();
 
         fs.watchFile(file, () => {
-            watched[file] = String(fs.readFileSync(file));
-            changed = true;
+            if (fs.existsSync(file)) {
+                watched[file] = String(fs.readFileSync(file));
+                // changed = true;
+                queueWrite();
+    
+                console.log('File changed: ', file);
+            } else {
+                delete watched[file];
+                // changed = true;
+                queueWrite();
 
-            console.log('File changed: ', file);
+                console.log('File deleted: ', file);
+            }
         });
     }
 };
@@ -55,13 +90,15 @@ const write = () => {
 };
 
 const loop = () => {
+    clear();
     read(path.join(__dirname, 'src'));
 
-    if (changed) {
-        changed = false;
+    // if (changed) {
+    //     // changed = false;
 
-        write();
-    }
+    //     // write();
+    //     // queueWrite();
+    // }
 
     setTimeout(() => {
         loop();

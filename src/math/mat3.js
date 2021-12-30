@@ -1,7 +1,4 @@
 class Mat3 {
-    static _tempMat = null;
-    static _tempVec = new Vec2();
-
     v0;
     v1;
     v2;
@@ -53,25 +50,25 @@ class Mat3 {
 
         const inv = 1.0 / det;
 
-        Mat3._tempMat.v0 = this.v4 * this.v8 - this.v7 * this.v5;
-        Mat3._tempMat.v3 = this.v6 * this.v5 - this.v3 * this.v8;
-        Mat3._tempMat.v6 = this.v3 * this.v7 - this.v6 * this.v4;
-        Mat3._tempMat.v1 = this.v7 * this.v2 - this.v1 * this.v8;
-        Mat3._tempMat.v4 = this.v0 * this.v8 - this.v6 * this.v2;
-        Mat3._tempMat.v7 = this.v6 * this.v1 - this.v0 * this.v7;
-        Mat3._tempMat.v2 = this.v1 * this.v5 - this.v4 * this.v2;
-        Mat3._tempMat.v5 = this.v3 * this.v2 - this.v0 * this.v5;
-        Mat3._tempMat.v8 = this.v0 * this.v4 - this.v3 * this.v1;
+        tempMat.v0 = this.v4 * this.v8 - this.v7 * this.v5;
+        tempMat.v3 = this.v6 * this.v5 - this.v3 * this.v8;
+        tempMat.v6 = this.v3 * this.v7 - this.v6 * this.v4;
+        tempMat.v1 = this.v7 * this.v2 - this.v1 * this.v8;
+        tempMat.v4 = this.v0 * this.v8 - this.v6 * this.v2;
+        tempMat.v7 = this.v6 * this.v1 - this.v0 * this.v7;
+        tempMat.v2 = this.v1 * this.v5 - this.v4 * this.v2;
+        tempMat.v5 = this.v3 * this.v2 - this.v0 * this.v5;
+        tempMat.v8 = this.v0 * this.v4 - this.v3 * this.v1;
 
-        this.v0 = inv * Mat3._tempMat.v0;
-        this.v3 = inv * Mat3._tempMat.v3;
-        this.v6 = inv * Mat3._tempMat.v6;
-        this.v1 = inv * Mat3._tempMat.v1;
-        this.v4 = inv * Mat3._tempMat.v4;
-        this.v7 = inv * Mat3._tempMat.v7;
-        this.v2 = inv * Mat3._tempMat.v2;
-        this.v5 = inv * Mat3._tempMat.v5;
-        this.v8 = inv * Mat3._tempMat.v8;
+        this.v0 = inv * tempMat.v0;
+        this.v3 = inv * tempMat.v3;
+        this.v6 = inv * tempMat.v6;
+        this.v1 = inv * tempMat.v1;
+        this.v4 = inv * tempMat.v4;
+        this.v7 = inv * tempMat.v7;
+        this.v2 = inv * tempMat.v2;
+        this.v5 = inv * tempMat.v5;
+        this.v8 = inv * tempMat.v8;
 
         return this;
     }
@@ -150,20 +147,20 @@ class Mat3 {
     }
 
     setTranslation(vec) {
-        const inverseVec = this.getTranslation(Mat3._tempVec).negate();
-        const inverse = Mat3._tempMat.setToTranslation(inverseVec);
+        const inverseVec = this.getTranslation(tempVec).negate();
+        const inverse = tempMat.setToTranslation(inverseVec);
 
         // translation * (inverse * self)
         this.leftMultiply(inverse);
 
-        const correct = Mat3._tempMat.setToTranslation(vec);
+        const correct = tempMat.setToTranslation(vec);
         return this.leftMultiply(correct)
     }
 
     translate(vec) {
-        Mat3._tempMat.setToTranslation(vec);
+        tempMat.setToTranslation(vec);
 
-        return this.multiply(Mat3._tempMat);
+        return this.multiply(tempMat);
     }
 
     setToRotation(radians) {
@@ -190,17 +187,17 @@ class Mat3 {
     }
 
     setRotation(radians) {
-        const inverse = Mat3._tempMat.setToRotation(-this.getRotation());
+        const inverse = tempMat.setToRotation(-this.getRotation());
         this.multiply(inverse);
-        const correct = Mat3._tempMat.setToRotation(radians);
+        const correct = tempMat.setToRotation(radians);
         return this.multiply(correct);
     }
 
     rotate(radians) {
-        Mat3._tempMat.setToRotation(radians);
+        tempMat.setToRotation(radians);
 
-        return this.multiply(Mat3._tempMat);
+        return this.multiply(tempMat);
     }
 }
 
-Mat3._tempMat = new Mat3();
+tempMat = new Mat3();
