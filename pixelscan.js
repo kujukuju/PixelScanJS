@@ -613,18 +613,25 @@ class GroundController {
     position = new Vec2();
     velocity = new Vec2();
     jumping = false;
+    falling = false;
     normals = [];
-    accel = 6;
-    friction = 4.5;
+    accel = 2;
+    friction = 1.5;
     // the fricton that is applied on top of default friction once you've exceeded max speed
-    terminalFriction = 0.5;
-    speed = 12;
+    terminalFriction = 0.15;
+    speed = 4;
     // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
     groundNormalSlope = 0.8660254037844386;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
     wallNormalSlope = 0.8660254037844386;
-    groundJumpVelocity = 25;
-    wallJumpVelocity = 40;
+    groundJumpVelocity = 6;
+    wallJumpVelocity = 12;
+    fallingFrames = 10;
+    allowedStepHeight = 6;
+
+    _jumpingForce = 0;
+    _jumpingDelta = 0;
+    _currentFallingFrames = 0;
 
     constructor() {
 
@@ -663,47 +670,37 @@ class GroundController {
             // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
             this.velocity.x = Math.sign(this.velocity.x) * this.speed;
         }
-    
-        // clear the jumping flag if you're not jumping
-        if (this.jumping) {
-            for (let i = 0; i < this.normals.length; i++) {
-                if (this.normals[i].y <= -this.groundNormalSlope) {
-                    this.jumping = false;
-                    break;
-                }
-                
-                if (this.normals[i].x >= this.wallNormalSlope) {
-                    this.jumping = false;
-                    break;
-                }
-    
-                if (this.normals[i].x <= -this.wallNormalSlope) {
-                    this.jumping = false;
-                    break;
-                }
+
+        let ground = false;
+        let leftWall = false;
+        let rightWall = false;
+        for (let i = 0; i < this.normals.length; i++) {
+            if (this.normals[i].y <= -this.groundNormalSlope) {
+                ground = true;
+            }
+            
+            if (this.normals[i].x >= this.wallNormalSlope) {
+                rightWall = true;
+            }
+
+            if (this.normals[i].x <= -this.wallNormalSlope) {
+                leftWall = true;
             }
         }
     
+        // clear the jumping flag if you're not jumping
+        if (this.jumping && (!up || ground || leftWall || rightWall)) {
+            this.falling = true;
+            this.jumping = false;
+        }
+        // this.jumping = this.jumping && up && !ground && !leftWall && !rightWall;
+    
         // jump if you're trying to and able to
-        if (!this.jumping && up) {
-            let ground = false;
-            let leftWall = false;
-            let rightWall = false;
-            for (let i = 0; i < this.normals.length; i++) {
-                if (this.normals[i].y <= -this.groundNormalSlope) {
-                    ground = true;
-                }
-                
-                if (this.normals[i].x >= this.wallNormalSlope) {
-                    rightWall = true;
-                }
-    
-                if (this.normals[i].x <= -this.wallNormalSlope) {
-                    leftWall = true;
-                }
-            }
-    
-            if (ground || leftWall || rightWall) {
+        if (ground || leftWall || rightWall) {
+            this._jumpingForce = 0;
+            this._jumpingDelta = 0;
+
+            if (!this.jumping && up) {
                 const jumpVelocity = (leftWall || rightWall) ? this.wallJumpVelocity : this.groundJumpVelocity;
                 let jumpDirectionX = 0;
                 let jumpDirectionY = 0;
@@ -725,6 +722,49 @@ class GroundController {
                 this.velocity.y = jumpDirectionY * jumpVelocity;
             }
         }
+
+        // const MAX_JUMPING_FORCE = 0.002;
+        const JUMP_ACCEL = 0.0001;
+        const DELTA = 16;
+
+        if (this.jumping) {
+            const startingDelta = this._jumpingDelta;
+            this._jumpingDelta += DELTA;
+
+            const progress = this._jumpingDelta / 600;
+            const startProgress = startingDelta / 400;
+            const finalProgress = this._jumpingDelta / 400;
+
+            let integratedJumpingForce = 1.0 / (startProgress + 1) - 1.0 / (finalProgress + 1);
+            integratedJumpingForce *= 0.42 * 4.5 * 4;
+
+            this._jumpingForce = 1.0 / (progress * (progress + 2) + 1);
+            this._jumpingForce *= 0.0042;
+
+            this.velocity.y -= integratedJumpingForce;
+            // client_player.body.velocity.y -= client_player.jumping_force * delta;
+        } else {
+            this._jumpingForce -= JUMP_ACCEL * DELTA;
+            this._jumpingForce = Math.max(this._jumpingForce, 0);
+
+            this.velocity.y -= this._jumpingForce * DELTA;
+        }
+
+        if (this.velocity.y >= 0) {
+            if (this.jumping) {
+                this.falling = true;
+            }
+
+            this.jumping = false;
+        }
+
+        if (!this.jumping && !ground && !leftWall && !rightWall) {
+            this._currentFallingFrames++;
+        } else {
+            this._currentFallingFrames = 0;
+        }
+
+        this.falling = (this.falling || this._currentFallingFrames > this.fallingFrames) && !this.jumping && !ground && !leftWall && !rightWall;
     }
 }
 class World {
@@ -776,15 +816,19 @@ class World {
             return;
         }
 
+        const position = Vec2.copy(controller.position);
+        const velocity = Vec2.copy(controller.velocity);
+
         // TODO specifically if you've moved at least 1 pixel then we can clear this
-        controller.normals.length = 0;
+        const nextPosition = Vec2.copy(controller.position).add(controller.velocity).round();
+        if (position.y !== nextPosition.y) {
+            controller.normals.length = 0;
+        }
     
         // this is not great, yet, because its stepping with lengths less than one entire step into the next pixel, so it will get overlapped pixels
         // like forming and L shape and stuff
         let remainingLength = controller.velocity.length();
         const step = Vec2.copy(controller.velocity).normalize();
-        const position = Vec2.copy(controller.position);
-        const velocity = Vec2.copy(controller.velocity);
         while (remainingLength > 0) {
             // is this kind of thing too confusing? idk
             const newPosition = new Vec2();
@@ -802,7 +846,7 @@ class World {
 
             const collision = checkCollisions(this, pixelNewPosition);
             if (collision) {
-                const stepUpOffset = stepUp(this, pixelNewPosition, 12);
+                const stepUpOffset = stepUp(this, pixelNewPosition, controller.allowedStepHeight);
                 if (stepUpOffset !== 0) {
                     // TODO do this less stupidly
                     controller.jumping = false;

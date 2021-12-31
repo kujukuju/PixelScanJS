@@ -47,15 +47,19 @@ class World {
             return;
         }
 
+        const position = Vec2.copy(controller.position);
+        const velocity = Vec2.copy(controller.velocity);
+
         // TODO specifically if you've moved at least 1 pixel then we can clear this
-        controller.normals.length = 0;
+        const nextPosition = Vec2.copy(controller.position).add(controller.velocity).round();
+        if (position.y !== nextPosition.y) {
+            controller.normals.length = 0;
+        }
     
         // this is not great, yet, because its stepping with lengths less than one entire step into the next pixel, so it will get overlapped pixels
         // like forming and L shape and stuff
         let remainingLength = controller.velocity.length();
         const step = Vec2.copy(controller.velocity).normalize();
-        const position = Vec2.copy(controller.position);
-        const velocity = Vec2.copy(controller.velocity);
         while (remainingLength > 0) {
             // is this kind of thing too confusing? idk
             const newPosition = new Vec2();
@@ -73,7 +77,7 @@ class World {
 
             const collision = checkCollisions(this, pixelNewPosition);
             if (collision) {
-                const stepUpOffset = stepUp(this, pixelNewPosition, 12);
+                const stepUpOffset = stepUp(this, pixelNewPosition, controller.allowedStepHeight);
                 if (stepUpOffset !== 0) {
                     // TODO do this less stupidly
                     controller.jumping = false;
