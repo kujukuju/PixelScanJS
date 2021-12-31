@@ -25,6 +25,13 @@ class Vec2 {
         return this;
     }
 
+    round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+
+        return this;
+    }
+
     multiply(mat) {
         if (Number.isNaN(mat)) {
             const x = this.x * mat.v0 + this.y * mat.v3 + mat.v6;

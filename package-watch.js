@@ -27,7 +27,7 @@ const clear = () => {
             // changed = true;
             queueWrite();
 
-            console.log('File deleted: ', file);
+            console.log('File deleted: ', path);
         }
     }
 };

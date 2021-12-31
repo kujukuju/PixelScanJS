@@ -24,6 +24,13 @@ class AABB {
         return this;
     }
 
+    round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+
+        return this;
+    }
+
     contains(x, y) {
         return (x >= this.x) && (y >= this.y) && (x - this.x < this.width) && (y - this.y < this.height);
     }

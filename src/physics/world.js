@@ -41,36 +41,137 @@ class World {
 
         const gravitySpeed = this.gravity.length();
         const appliedGravity = Vec2.copy(this.gravity).normalize().multiply(Math.max(gravitySpeed - bodyFallingSpeed * bodyFallingSpeed, 0));
-
         controller.velocity.add(appliedGravity);
-        controller.position.add(controller.velocity);
+
+        if (controller.velocity.length() === 0) {
+            return;
+        }
+
+        // TODO specifically if you've moved at least 1 pixel then we can clear this
+        controller.normals.length = 0;
+    
+        // this is not great, yet, because its stepping with lengths less than one entire step into the next pixel, so it will get overlapped pixels
+        // like forming and L shape and stuff
+        let remainingLength = controller.velocity.length();
+        const step = Vec2.copy(controller.velocity).normalize();
+        const position = Vec2.copy(controller.position);
+        const velocity = Vec2.copy(controller.velocity);
+        while (remainingLength > 0) {
+            // is this kind of thing too confusing? idk
+            const newPosition = new Vec2();
+            if (remainingLength >= 1) {
+                newPosition.x = position.x + step.x;
+                newPosition.y = position.y + step.y;
+            } else {
+                // partial steps to preserve floating point accuracy
+                newPosition.x = position.x + step.x * remainingLength;
+                newPosition.y = position.y + step.y * remainingLength;
+            }
+    
+            const pixelNewPosition = new AABB(newPosition.x + aabb.x, newPosition.y + aabb.y, aabb.width, aabb.height);
+            pixelNewPosition.round();
+
+            const collision = checkCollisions(this, pixelNewPosition);
+            if (collision) {
+                const stepUpOffset = stepUp(this, pixelNewPosition, 20);
+                if (stepUpOffset !== 0) {
+                    // TODO do this less stupidly
+                    controller.jumping = false;
+                    newPosition.y -= stepUpOffset;
+                    controller.velocity.y = 0;
+    
+                    // if youve been teleported up a step subtract this from the remaining movement length
+                    remainingLength = Math.max(remainingLength - stepUpOffset, 0);
+
+                    controller.normals.push(new Vec2(0, -1));
+                } else {
+                    // actual collision we can't resolve, for now stop here?
+                    // paint_edges(collision_pixel.x, collision_pixel.y, velocity);
+                    controller.position.x = position.x;
+                    controller.position.y = position.y;
+                    return;
+                }
+            }
+    
+            position.x = newPosition.x;
+            position.y = newPosition.y;
+            // each step is a length of 1 for now
+            remainingLength = Math.max(remainingLength - 1.0, 0);
+        }
+    
+        controller.position.x = position.x;
+        controller.position.y = position.y;
+        controller.velocity.x = velocity.x;
+        controller.velocity.y = velocity.y;
+        return;
     }
 
     getPixel(x, y) {
-        const index = y * this.width + x;
-        if (index < 0 || index >= this.pixels.length) {
+        if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
             return false;
         }
 
-        return this.pixels[index];
+        return this.pixels[y * this.width + x];
     }
 }
 
-// tries to step up from your current position, returns the necessary offset
-const stepAABB = new AABB();
-const stepUp = (world, aabb, height, resultVector) => {
-    for (let y = 0; y <= height; y++) {
-        stepAABB.x = aabb.x;
-        stepAABB.y = aabb.y - y;
 
-        if (!checkCollisions(world, stepAABB)) {
-            resultVector.x = stepAABB.x;
-            resultVector.y = stepAABB.y;
+
+const paintEdges = (x, y, velocity) => {
+    // // okay first probably I will just draw all the pixels along a wall red to see what happens, if this algorithm even works for finding edges
+    // normal_angle := atan2(-velocity.y, -velocity.x);
+
+    // SetPixelColor(LEVEL.image, RED, x, y);
+
+    // current_pixel, valid_pixel := get_next_wall_pixel(x, y, normal_angle);
+    // color := GetPixelColor(LEVEL.image, current_pixel.x, current_pixel.y);
+    // while valid_pixel && color != RED {
+    //     SetPixelColor(LEVEL.image, RED, current_pixel.x, current_pixel.y);
+
+    //     current_pixel, valid_pixel = get_next_wall_pixel(current_pixel.x, current_pixel.y, normal_angle);
+    //     color = GetPixelColor(LEVEL.image, current_pixel.x, current_pixel.y);
+    // }
+}
+
+// the original method also returned a point
+const checkCollisions = (world, aabb) => {
+    for (let x = 0; x < aabb.width; x++) {
+        if (world.getPixel(aabb.x + x, aabb.y)) {
+            return true;
+        }
+        if (world.getPixel(aabb.x + x, aabb.y + aabb.height - 1)) {
+            return true;
+        }
+    }
+
+    for (let y = 0; y < aabb.height; y++) {
+        if (world.getPixel(aabb.x, aabb.y + y)) {
+            return true;
+        }
+        if (world.getPixel(aabb.x + aabb.width - 1, aabb.y + y)) {
             return true;
         }
     }
 
     return false;
+};
+
+// tries to step up from your current position, returns the necessary offset
+const stepAABB = new AABB();
+const stepUp = (world, aabb, height) => {
+    stepAABB.width = aabb.width;
+    stepAABB.height = aabb.height;
+    
+    for (let y = 0; y <= height; y++) {
+        stepAABB.x = aabb.x;
+        stepAABB.y = aabb.y - y;
+
+        if (!checkCollisions(world, stepAABB)) {
+            return y;
+        }
+    }
+
+    return 0;
 };
 
 // we need to find all pixels that have at least one adjacent empty space

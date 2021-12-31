@@ -60,10 +60,16 @@ class FramedSprite extends PIXI.Sprite {
         this.updateFrame();
     }
 
-    stepAnimation(name, frames) {
+    stepAnimation(name, frames, loop) {
         if (Number.isNaN(name)) {
+            loop = frames;
             frames = name;
             name = undefined;
+        }
+
+        frames = frames || 1;
+        if (loop === undefined) {
+            loop = true;
         }
 
         if (this.currentName !== name) {
@@ -72,13 +78,19 @@ class FramedSprite extends PIXI.Sprite {
             }
         }
 
-        frames = frames || 1;
-
         this.currentName = name;
         if (this.animations[this.currentName]) {
-            this.currentFrame = (this.currentFrame + frames) % this.animations[this.currentName].count;
+            if (loop) {
+                this.currentFrame = (this.currentFrame + frames) % this.animations[this.currentName].count;
+            } else {
+                this.currentFrame = Math.min(this.currentFrame + frames, this.animations[this.currentName].count - 1);
+            }
         } else {
-            this.currentFrame = (this.currentFrame + frames) % this.textures.length;
+            if (loop) {
+                this.currentFrame = (this.currentFrame + frames) % this.textures.length;
+            } else {
+                this.currentFrame = Math.min(this.currentFrame + frames, this.textures.length - 1);
+            }
         }
 
         this.updateFrame();
@@ -233,6 +245,13 @@ class AABB {
         this.y = aabb.y;
         this.width = aabb.width;
         this.height = aabb.height;
+
+        return this;
+    }
+
+    round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
 
         return this;
     }
@@ -471,6 +490,13 @@ class Vec2 {
         return this;
     }
 
+    round() {
+        this.x = Math.round(this.x);
+        this.y = Math.round(this.y);
+
+        return this;
+    }
+
     multiply(mat) {
         if (Number.isNaN(mat)) {
             const x = this.x * mat.v0 + this.y * mat.v3 + mat.v6;
@@ -583,122 +609,124 @@ class Vec2 {
 }
 
 tempVec = new Vec2();
-// const createGroundController = () => {
-//     return {
-//         position: new Vec2(),
-//         velocity: new Vec2(),
-//         jumping: false,
-//         normals: [],
-//         accel: 0.4,
-//         friction: 0.2,
-//         // the fricton that is applied on top of default friction once you've exceeded max speed
-//         terminalFriction: 0.05,
-//         speed: 20,
-//         // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
-//         groundNormalSlope: 0.8660254037844386,
-//         // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
-//         wallNormalSlope: 0.8660254037844386,
-//         groundJumpVelocity: 20,
-//         wallJumpVelocity: 40,
-//     };
-// };
+class GroundController {
+    position = new Vec2();
+    velocity = new Vec2();
+    jumping = false;
+    normals = [];
+    accel = 8;
+    friction = 6;
+    // the fricton that is applied on top of default friction once you've exceeded max speed
+    terminalFriction = 0.5;
+    speed = 20;
+    // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
+    groundNormalSlope = 0.8660254037844386;
+    // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
+    wallNormalSlope = 0.8660254037844386;
+    groundJumpVelocity = 25;
+    wallJumpVelocity = 40;
 
-// const applyGroundAcceleration = (controller, up, left, down, right) => {
-//     let accelX = 0;
-//     if (left) {
-//         accelX -= controller.accel;
-//     }
-//     if (right) {
-//         accelX += controller.accel;
-//     }
+    constructor() {
 
-//     const initialVelocityX = controller.velocity.x;
-//     if (Math.abs(controller.velocity.x + accelX) <= controller.friction) {
-//         controller.velocity.x = 0;
-//     } else {
-//         controller.velocity.x += accelX;
-//         controller.velocity.x -= Math.sign(controller.velocity.x) * controller.friction;
-//     }
+    }
 
-//     if (Math.abs(initialVelocityX) > controller.speed && Math.abs(controller.velocity.x) > controller.speed) {
-//         if (Math.abs(controller.velocity.x) > Math.abs(initialVelocityX)) {
-//             // in this scenario we want to match the previously applied acceleration to the friciton to only cancel it out, then apply the terminal friction on top
-//             controller.velocity.x -= (accelX - Math.sign(accelX) * controller.friction);
-//         }
-
-//         if (Math.abs(controller.velocity.x) - controller.terminalFriction <= controller.speed) {
-//             // because we're able to go past the max speed using the terminal friction we only adjust to the max speed
-//             controller.velocity.x = Math.sign(controller.velocity.x) * controller.speed;
-//         } else {
-//             controller.velocity.x -= Math.sign(controller.velocity.x) * controller.terminalFriction;
-//         }
-//     } else if (Math.abs(controller.velocity.x) > controller.speed) {
-//         // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
-//         controller.velocity.x = Math.sign(controller.velocity.x) * controller.speed;
-//     }
-
-//     // clear the jumping flag if you're not jumping
-//     if (controller.jumping) {
-//         for (let i = 0; i < controller.normals.length; i++) {
-//             if (controller.normals[i].y >= controller.groundNormalSlope) {
-//                 controller.jumping = false;
-//                 break;
-//             }
-            
-//             if (controller.normals[i].x >= controller.wallNormalSlope) {
-//                 controller.jumping = false;
-//                 break;
-//             }
-
-//             if (controller.normals[i].x <= -controller.wallNormalSlope) {
-//                 controller.jumping = false;
-//                 break;
-//             }
-//         }
-//     }
-
-//     // jump if you're trying to and able to
-//     if (!controller.jumping && up) {
-//         let ground = false;
-//         let leftWall = false;
-//         let rightWall = false;
-//         for (let i = 0; i < controller.normals.length; i++) {
-//             if (controller.normals[i].y >= controller.groundNormalSlope) {
-//                 ground = true;
-//             }
-            
-//             if (controller.normals[i].x >= controller.wallNormalSlope) {
-//                 rightWall = true;
-//             }
-
-//             if (controller.normals[i].x <= -controller.wallNormalSlope) {
-//                 leftWall = true;
-//             }
-//         }
-
-//         if (ground || leftWall || rightWall) {
-//             const jumpVelocity = (leftWall || rightWall) ? controller.wallJumpVelocity : controller.groundJumpVelocity;
-//             let jumpDirectionX = 0;
-//             let jumpDirectionY = 0;
-
-//             if (ground) {
-//                 jumpDirectionY = -1;
-//             } else if (leftWall && rightWall) {
-//                 jumpDirectionY = -1;
-//             } else if (leftWall) {
-//                 jumpDirectionX = 0.5;
-//                 jumpDirectionY = -0.8660254037844386;
-//             } else if (rightWall) {
-//                 jumpDirectionX = -0.5;
-//                 jumpDirectionY = -0.8660254037844386;
-//             }
-
-//             controller.jumping = true;
-//             controller.velocity.x += jumpDirectionX * jumpVelocity;
-//             controller.velocity.y = jumpDirectionY * jumpVelocity;
-//         }
-//     }
-// };
+    applyAcceleration(up, left, down, right) {
+        let accelX = 0;
+        if (left) {
+            accelX -= this.accel;
+        }
+        if (right) {
+            accelX += this.accel;
+        }
+    
+        const initialVelocityX = this.velocity.x;
+        if (Math.abs(this.velocity.x + accelX) <= this.friction) {
+            this.velocity.x = 0;
+        } else {
+            this.velocity.x += accelX;
+            this.velocity.x -= Math.sign(this.velocity.x) * this.friction;
+        }
+    
+        if (Math.abs(initialVelocityX) > this.speed && Math.abs(this.velocity.x) > this.speed) {
+            if (Math.abs(this.velocity.x) > Math.abs(initialVelocityX)) {
+                // in this scenario we want to match the previously applied acceleration to the friciton to only cancel it out, then apply the terminal friction on top
+                this.velocity.x -= (accelX - Math.sign(accelX) * this.friction);
+            }
+    
+            if (Math.abs(this.velocity.x) - this.terminalFriction <= this.speed) {
+                // because we're able to go past the max speed using the terminal friction we only adjust to the max speed
+                this.velocity.x = Math.sign(this.velocity.x) * this.speed;
+            } else {
+                this.velocity.x -= Math.sign(this.velocity.x) * this.terminalFriction;
+            }
+        } else if (Math.abs(this.velocity.x) > this.speed) {
+            // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
+            this.velocity.x = Math.sign(this.velocity.x) * this.speed;
+        }
+    
+        // clear the jumping flag if you're not jumping
+        if (this.jumping) {
+            for (let i = 0; i < this.normals.length; i++) {
+                if (this.normals[i].y <= -this.groundNormalSlope) {
+                    this.jumping = false;
+                    break;
+                }
+                
+                if (this.normals[i].x >= this.wallNormalSlope) {
+                    this.jumping = false;
+                    break;
+                }
+    
+                if (this.normals[i].x <= -this.wallNormalSlope) {
+                    this.jumping = false;
+                    break;
+                }
+            }
+        }
+    
+        // jump if you're trying to and able to
+        if (!this.jumping && up) {
+            let ground = false;
+            let leftWall = false;
+            let rightWall = false;
+            for (let i = 0; i < this.normals.length; i++) {
+                if (this.normals[i].y <= -this.groundNormalSlope) {
+                    ground = true;
+                }
+                
+                if (this.normals[i].x >= this.wallNormalSlope) {
+                    rightWall = true;
+                }
+    
+                if (this.normals[i].x <= -this.wallNormalSlope) {
+                    leftWall = true;
+                }
+            }
+    
+            if (ground || leftWall || rightWall) {
+                const jumpVelocity = (leftWall || rightWall) ? this.wallJumpVelocity : this.groundJumpVelocity;
+                let jumpDirectionX = 0;
+                let jumpDirectionY = 0;
+    
+                if (ground) {
+                    jumpDirectionY = -1;
+                } else if (leftWall && rightWall) {
+                    jumpDirectionY = -1;
+                } else if (leftWall) {
+                    jumpDirectionX = 0.5;
+                    jumpDirectionY = -0.8660254037844386;
+                } else if (rightWall) {
+                    jumpDirectionX = -0.5;
+                    jumpDirectionY = -0.8660254037844386;
+                }
+    
+                this.jumping = true;
+                this.velocity.x += jumpDirectionX * jumpVelocity;
+                this.velocity.y = jumpDirectionY * jumpVelocity;
+            }
+        }
+    }
+}
 class World {
     width;
     height;
@@ -742,36 +770,137 @@ class World {
 
         const gravitySpeed = this.gravity.length();
         const appliedGravity = Vec2.copy(this.gravity).normalize().multiply(Math.max(gravitySpeed - bodyFallingSpeed * bodyFallingSpeed, 0));
-
         controller.velocity.add(appliedGravity);
-        controller.position.add(controller.velocity);
+
+        if (controller.velocity.length() === 0) {
+            return;
+        }
+
+        // TODO specifically if you've moved at least 1 pixel then we can clear this
+        controller.normals.length = 0;
+    
+        // this is not great, yet, because its stepping with lengths less than one entire step into the next pixel, so it will get overlapped pixels
+        // like forming and L shape and stuff
+        let remainingLength = controller.velocity.length();
+        const step = Vec2.copy(controller.velocity).normalize();
+        const position = Vec2.copy(controller.position);
+        const velocity = Vec2.copy(controller.velocity);
+        while (remainingLength > 0) {
+            // is this kind of thing too confusing? idk
+            const newPosition = new Vec2();
+            if (remainingLength >= 1) {
+                newPosition.x = position.x + step.x;
+                newPosition.y = position.y + step.y;
+            } else {
+                // partial steps to preserve floating point accuracy
+                newPosition.x = position.x + step.x * remainingLength;
+                newPosition.y = position.y + step.y * remainingLength;
+            }
+    
+            const pixelNewPosition = new AABB(newPosition.x + aabb.x, newPosition.y + aabb.y, aabb.width, aabb.height);
+            pixelNewPosition.round();
+
+            const collision = checkCollisions(this, pixelNewPosition);
+            if (collision) {
+                const stepUpOffset = stepUp(this, pixelNewPosition, 20);
+                if (stepUpOffset !== 0) {
+                    // TODO do this less stupidly
+                    controller.jumping = false;
+                    newPosition.y -= stepUpOffset;
+                    controller.velocity.y = 0;
+    
+                    // if youve been teleported up a step subtract this from the remaining movement length
+                    remainingLength = Math.max(remainingLength - stepUpOffset, 0);
+
+                    controller.normals.push(new Vec2(0, -1));
+                } else {
+                    // actual collision we can't resolve, for now stop here?
+                    // paint_edges(collision_pixel.x, collision_pixel.y, velocity);
+                    controller.position.x = position.x;
+                    controller.position.y = position.y;
+                    return;
+                }
+            }
+    
+            position.x = newPosition.x;
+            position.y = newPosition.y;
+            // each step is a length of 1 for now
+            remainingLength = Math.max(remainingLength - 1.0, 0);
+        }
+    
+        controller.position.x = position.x;
+        controller.position.y = position.y;
+        controller.velocity.x = velocity.x;
+        controller.velocity.y = velocity.y;
+        return;
     }
 
     getPixel(x, y) {
-        const index = y * this.width + x;
-        if (index < 0 || index >= this.pixels.length) {
+        if (x < 0 || y < 0 || x >= this.width || y >= this.height) {
             return false;
         }
 
-        return this.pixels[index];
+        return this.pixels[y * this.width + x];
     }
 }
 
-// tries to step up from your current position, returns the necessary offset
-const stepAABB = new AABB();
-const stepUp = (world, aabb, height, resultVector) => {
-    for (let y = 0; y <= height; y++) {
-        stepAABB.x = aabb.x;
-        stepAABB.y = aabb.y - y;
 
-        if (!checkCollisions(world, stepAABB)) {
-            resultVector.x = stepAABB.x;
-            resultVector.y = stepAABB.y;
+
+const paintEdges = (x, y, velocity) => {
+    // // okay first probably I will just draw all the pixels along a wall red to see what happens, if this algorithm even works for finding edges
+    // normal_angle := atan2(-velocity.y, -velocity.x);
+
+    // SetPixelColor(LEVEL.image, RED, x, y);
+
+    // current_pixel, valid_pixel := get_next_wall_pixel(x, y, normal_angle);
+    // color := GetPixelColor(LEVEL.image, current_pixel.x, current_pixel.y);
+    // while valid_pixel && color != RED {
+    //     SetPixelColor(LEVEL.image, RED, current_pixel.x, current_pixel.y);
+
+    //     current_pixel, valid_pixel = get_next_wall_pixel(current_pixel.x, current_pixel.y, normal_angle);
+    //     color = GetPixelColor(LEVEL.image, current_pixel.x, current_pixel.y);
+    // }
+}
+
+// the original method also returned a point
+const checkCollisions = (world, aabb) => {
+    for (let x = 0; x < aabb.width; x++) {
+        if (world.getPixel(aabb.x + x, aabb.y)) {
+            return true;
+        }
+        if (world.getPixel(aabb.x + x, aabb.y + aabb.height - 1)) {
+            return true;
+        }
+    }
+
+    for (let y = 0; y < aabb.height; y++) {
+        if (world.getPixel(aabb.x, aabb.y + y)) {
+            return true;
+        }
+        if (world.getPixel(aabb.x + aabb.width - 1, aabb.y + y)) {
             return true;
         }
     }
 
     return false;
+};
+
+// tries to step up from your current position, returns the necessary offset
+const stepAABB = new AABB();
+const stepUp = (world, aabb, height) => {
+    stepAABB.width = aabb.width;
+    stepAABB.height = aabb.height;
+    
+    for (let y = 0; y <= height; y++) {
+        stepAABB.x = aabb.x;
+        stepAABB.y = aabb.y - y;
+
+        if (!checkCollisions(world, stepAABB)) {
+            return y;
+        }
+    }
+
+    return 0;
 };
 
 // we need to find all pixels that have at least one adjacent empty space
@@ -919,122 +1048,101 @@ const extract = (application, texture) => {
 
     return pixels;
 };
-class GroundController {
-    position = new Vec2();
-    velocity = new Vec2();
-    jumping = false;
-    normals = [];
-    accel = 4;
-    friction = 2;
-    // the fricton that is applied on top of default friction once you've exceeded max speed
-    terminalFriction = 0.5;
-    speed = 20;
-    // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
-    groundNormalSlope = 0.8660254037844386;
-    // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
-    wallNormalSlope = 0.8660254037844386;
-    groundJumpVelocity = 40;
-    wallJumpVelocity = 80;
+class FPSTracker extends PIXI.Text {
+    history;
+    nextIndex;
 
-    constructor() {
+    constructor(color) {
+        super('FPS: 0.0', {fill: color === undefined ? 0xffffff : color, fontSize: 16});
 
+        this.history = new Array(60).fill(0);
+        this.nextIndex = 0;
     }
 
-    applyAcceleration(up, left, down, right) {
-        let accelX = 0;
-        if (left) {
-            accelX -= this.accel;
-        }
-        if (right) {
-            accelX += this.accel;
+    getFPS() {
+        let startIndex = this.nextIndex;
+        if (this.history[startIndex] === 0) {
+            startIndex = 0;
         }
     
-        const initialVelocityX = this.velocity.x;
-        if (Math.abs(this.velocity.x + accelX) <= this.friction) {
-            this.velocity.x = 0;
-        } else {
-            this.velocity.x += accelX;
-            this.velocity.x -= Math.sign(this.velocity.x) * this.friction;
+        const firstTime = this.history[startIndex];
+        if (startIndex === 0 && firstTime === 0) {
+            return 0.0;
         }
     
-        if (Math.abs(initialVelocityX) > this.speed && Math.abs(this.velocity.x) > this.speed) {
-            if (Math.abs(this.velocity.x) > Math.abs(initialVelocityX)) {
-                // in this scenario we want to match the previously applied acceleration to the friciton to only cancel it out, then apply the terminal friction on top
-                this.velocity.x -= (accelX - Math.sign(accelX) * this.friction);
+        const lastIndex = (this.nextIndex + this.history.length - 1) % this.history.length;
+        const lastTime = this.history[lastIndex];
+    
+        const deltaTime = lastTime - firstTime;
+        const deltaFrames = (lastIndex - startIndex + this.history.length) % this.history.length;
+    
+        if (deltaTime === 0) {
+            return 0;
+        }
+    
+        return deltaFrames / deltaTime * 1000;
+    }
+    
+    tick(time) {
+        this.history[this.nextIndex] = time;
+        this.nextIndex = (this.nextIndex + 1) % this.history.length;
+        
+        const fps = this.getFPS();
+        const integer = Math.floor(fps);
+        const remainder = Math.floor((fps - integer) * 100);
+
+        this.text = 'FPS: ' + integer + '.' + remainder;
+    }
+}
+
+class CPUTracker extends PIXI.Text {
+    history;
+    nextIndex;
+
+    startTime;
+    endTime;
+
+    constructor(color) {
+        super('CPU: 0.0%', {fill: color === undefined ? 0xffffff : color, fontSize: 16});
+
+        this.history = new Array(60).fill(0);
+        this.nextIndex = 0;
+
+        this.startTime = 0;
+        this.endTime = 0;
+    }
+
+    beginFrame(time) {
+        if (this.startTime > 0 && this.endTime > 0) {
+            const totalTime = time - this.startTime;
+            const frameTime = this.endTime - this.startTime;
+
+            this.history[this.nextIndex] = Math.max(frameTime / totalTime, Number.MIN_VALUE);
+            this.nextIndex = (this.nextIndex + 1) % this.history.length;
+
+            let total = 0;
+            let count = 0;
+            for (let i = 0; i < this.history.length; i++) {
+                if (this.history[i] === 0) {
+                    continue;
+                }
+    
+                total += this.history[i];
+                count++;
             }
+            
+            const cpu = total / count * 100;
+            const integer = Math.floor(cpu);
+            const remainder = Math.floor((cpu - integer) * 100);
     
-            if (Math.abs(this.velocity.x) - this.terminalFriction <= this.speed) {
-                // because we're able to go past the max speed using the terminal friction we only adjust to the max speed
-                this.velocity.x = Math.sign(this.velocity.x) * this.speed;
-            } else {
-                this.velocity.x -= Math.sign(this.velocity.x) * this.terminalFriction;
-            }
-        } else if (Math.abs(this.velocity.x) > this.speed) {
-            // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
-            this.velocity.x = Math.sign(this.velocity.x) * this.speed;
+            this.text = 'CPU: ' + integer + '.' + remainder + '%';
         }
-    
-        // clear the jumping flag if you're not jumping
-        if (this.jumping) {
-            for (let i = 0; i < this.normals.length; i++) {
-                if (this.normals[i].y >= this.groundNormalSlope) {
-                    this.jumping = false;
-                    break;
-                }
-                
-                if (this.normals[i].x >= this.wallNormalSlope) {
-                    this.jumping = false;
-                    break;
-                }
-    
-                if (this.normals[i].x <= -this.wallNormalSlope) {
-                    this.jumping = false;
-                    break;
-                }
-            }
-        }
-    
-        // jump if you're trying to and able to
-        if (!this.jumping && up) {
-            let ground = false;
-            let leftWall = false;
-            let rightWall = false;
-            for (let i = 0; i < this.normals.length; i++) {
-                if (this.normals[i].y >= this.groundNormalSlope) {
-                    ground = true;
-                }
-                
-                if (this.normals[i].x >= this.wallNormalSlope) {
-                    rightWall = true;
-                }
-    
-                if (this.normals[i].x <= -this.wallNormalSlope) {
-                    leftWall = true;
-                }
-            }
-    
-            if (ground || leftWall || rightWall) {
-                const jumpVelocity = (leftWall || rightWall) ? this.wallJumpVelocity : this.groundJumpVelocity;
-                let jumpDirectionX = 0;
-                let jumpDirectionY = 0;
-    
-                if (ground) {
-                    jumpDirectionY = -1;
-                } else if (leftWall && rightWall) {
-                    jumpDirectionY = -1;
-                } else if (leftWall) {
-                    jumpDirectionX = 0.5;
-                    jumpDirectionY = -0.8660254037844386;
-                } else if (rightWall) {
-                    jumpDirectionX = -0.5;
-                    jumpDirectionY = -0.8660254037844386;
-                }
-    
-                this.jumping = true;
-                this.velocity.x += jumpDirectionX * jumpVelocity;
-                this.velocity.y = jumpDirectionY * jumpVelocity;
-            }
-        }
+
+        this.startTime = time;
+    }
+
+    endFrame(time) {
+        this.endTime = time;
     }
 }
 const PixelScan = {
@@ -1044,6 +1152,8 @@ const PixelScan = {
     Input,
     World,
     GroundController,
+    FPSTracker,
+    CPUTracker,
     extract,
 };
 return PixelScan;

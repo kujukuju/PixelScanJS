@@ -59,10 +59,16 @@ class FramedSprite extends PIXI.Sprite {
         this.updateFrame();
     }
 
-    stepAnimation(name, frames) {
+    stepAnimation(name, frames, loop) {
         if (Number.isNaN(name)) {
+            loop = frames;
             frames = name;
             name = undefined;
+        }
+
+        frames = frames || 1;
+        if (loop === undefined) {
+            loop = true;
         }
 
         if (this.currentName !== name) {
@@ -71,13 +77,19 @@ class FramedSprite extends PIXI.Sprite {
             }
         }
 
-        frames = frames || 1;
-
         this.currentName = name;
         if (this.animations[this.currentName]) {
-            this.currentFrame = (this.currentFrame + frames) % this.animations[this.currentName].count;
+            if (loop) {
+                this.currentFrame = (this.currentFrame + frames) % this.animations[this.currentName].count;
+            } else {
+                this.currentFrame = Math.min(this.currentFrame + frames, this.animations[this.currentName].count - 1);
+            }
         } else {
-            this.currentFrame = (this.currentFrame + frames) % this.textures.length;
+            if (loop) {
+                this.currentFrame = (this.currentFrame + frames) % this.textures.length;
+            } else {
+                this.currentFrame = Math.min(this.currentFrame + frames, this.textures.length - 1);
+            }
         }
 
         this.updateFrame();

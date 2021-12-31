@@ -3,8 +3,8 @@ class GroundController {
     velocity = new Vec2();
     jumping = false;
     normals = [];
-    accel = 4;
-    friction = 2;
+    accel = 8;
+    friction = 6;
     // the fricton that is applied on top of default friction once you've exceeded max speed
     terminalFriction = 0.5;
     speed = 20;
@@ -12,8 +12,8 @@ class GroundController {
     groundNormalSlope = 0.8660254037844386;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
     wallNormalSlope = 0.8660254037844386;
-    groundJumpVelocity = 40;
-    wallJumpVelocity = 80;
+    groundJumpVelocity = 25;
+    wallJumpVelocity = 40;
 
     constructor() {
 
@@ -56,7 +56,7 @@ class GroundController {
         // clear the jumping flag if you're not jumping
         if (this.jumping) {
             for (let i = 0; i < this.normals.length; i++) {
-                if (this.normals[i].y >= this.groundNormalSlope) {
+                if (this.normals[i].y <= -this.groundNormalSlope) {
                     this.jumping = false;
                     break;
                 }
@@ -79,7 +79,7 @@ class GroundController {
             let leftWall = false;
             let rightWall = false;
             for (let i = 0; i < this.normals.length; i++) {
-                if (this.normals[i].y >= this.groundNormalSlope) {
+                if (this.normals[i].y <= -this.groundNormalSlope) {
                     ground = true;
                 }
                 

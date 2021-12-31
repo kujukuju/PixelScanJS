@@ -5,5 +5,7 @@ const PixelScan = {
     Input,
     World,
     GroundController,
+    FPSTracker,
+    CPUTracker,
     extract,
 };
