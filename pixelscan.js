@@ -536,7 +536,7 @@ class Vec2 {
     normalize() {
         const length = this.magnitude();
         if (length === 0) {
-            return;
+            return this;
         }
 
         this.x /= length;
@@ -614,11 +614,11 @@ class GroundController {
     velocity = new Vec2();
     jumping = false;
     normals = [];
-    accel = 8;
-    friction = 6;
+    accel = 6;
+    friction = 4.5;
     // the fricton that is applied on top of default friction once you've exceeded max speed
     terminalFriction = 0.5;
-    speed = 20;
+    speed = 12;
     // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
     groundNormalSlope = 0.8660254037844386;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
@@ -802,23 +802,34 @@ class World {
 
             const collision = checkCollisions(this, pixelNewPosition);
             if (collision) {
-                const stepUpOffset = stepUp(this, pixelNewPosition, 20);
+                const stepUpOffset = stepUp(this, pixelNewPosition, 12);
                 if (stepUpOffset !== 0) {
                     // TODO do this less stupidly
                     controller.jumping = false;
                     newPosition.y -= stepUpOffset;
-                    controller.velocity.y = 0;
     
                     // if youve been teleported up a step subtract this from the remaining movement length
-                    remainingLength = Math.max(remainingLength - stepUpOffset, 0);
+                    // basically calculate the difference in the y value would make to equal the hypotenuse considering we're already subtracting one
+                    // we need to calculate the distance that this vertical line would be to the actual velocity line, and use that as one of the
+                    // edges of the triangle to calculate the hypotenuse
+                    const travelDirection = Vec2.copy(velocity).normalize();
+                    // const verticalStep = new Vec2(0, stepUpOffset);
+                    // const stepAngle = Math.acos(travelDirection.dot(verticalStep) / (travelDirection.length() * verticalStep.length()));
+                    // const minimumStepDistance = 1 / Math.tan(Math.PI / 2 - stepAngle);
+
+                    const slopePenalty = Math.sqrt(1 + stepUpOffset * stepUpOffset) - 1;
+                    remainingLength = Math.max(remainingLength - slopePenalty, 0);
 
                     controller.normals.push(new Vec2(0, -1));
+
+                    velocity.y = 0;
                 } else {
                     // actual collision we can't resolve, for now stop here?
                     // paint_edges(collision_pixel.x, collision_pixel.y, velocity);
-                    controller.position.x = position.x;
-                    controller.position.y = position.y;
-                    return;
+                    // controller.position.x = position.x;
+                    // controller.position.y = position.y;
+                    velocity.y = 0;
+                    break;
                 }
             }
     
@@ -828,11 +839,10 @@ class World {
             remainingLength = Math.max(remainingLength - 1.0, 0);
         }
     
-        controller.position.x = position.x;
-        controller.position.y = position.y;
+        controller.position.x = Math.round(position.x);
+        controller.position.y = Math.round(position.y);
         controller.velocity.x = velocity.x;
         controller.velocity.y = velocity.y;
-        return;
     }
 
     getPixel(x, y) {

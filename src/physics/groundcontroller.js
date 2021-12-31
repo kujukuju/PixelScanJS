@@ -3,11 +3,11 @@ class GroundController {
     velocity = new Vec2();
     jumping = false;
     normals = [];
-    accel = 8;
-    friction = 6;
+    accel = 6;
+    friction = 4.5;
     // the fricton that is applied on top of default friction once you've exceeded max speed
     terminalFriction = 0.5;
-    speed = 20;
+    speed = 12;
     // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
     groundNormalSlope = 0.8660254037844386;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees

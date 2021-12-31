@@ -71,7 +71,7 @@ class Vec2 {
     normalize() {
         const length = this.magnitude();
         if (length === 0) {
-            return;
+            return this;
         }
 
         this.x /= length;
