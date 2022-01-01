@@ -1,6 +1,6 @@
 {
   "name": "pixelscanjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple pixel based physics engine only supporting static environments and ropes!",
   "main": "pixelscan.js",
   "repository": "git@github.com:kujukuju/PixelScanJS.git",
