@@ -5,5 +5,21 @@
   "main": "pixelscan.js",
   "repository": "git@github.com:kujukuju/PixelScanJS.git",
   "author": "Kuju <kuju@veraegames.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "keywords": [
+    "physics",
+    "engine",
+    "physics engine",
+    "pixel engine",
+    "pixelscan",
+    "pixel scan",
+    "pixelscanjs",
+    "pixelscan.js",
+    "pixel scan js",
+    "box2d",
+    "matter",
+    "matterjs",
+    "matter js",
+    "matter.js"
+  ]
 }
