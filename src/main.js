@@ -7,5 +7,8 @@ const PixelScan = {
     GroundController,
     FPSTracker,
     CPUTracker,
+    ParallaxSprite,
+    PerlinNoise,
+    Camera,
     extract,
 };

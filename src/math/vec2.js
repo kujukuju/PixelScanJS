@@ -18,6 +18,13 @@ class Vec2 {
         return this;
     }
 
+    set(x, y) {
+        this.x = x;
+        this.y = y;
+
+        return this;
+    }
+
     add(vec) {
         this.x += vec.x;
         this.y += vec.y;
@@ -57,6 +64,22 @@ class Vec2 {
     magnitudeSquared() {
         return this.x * this.x + this.y * this.y;
     }
+
+    square() {
+        this.x = this.x * this.x;
+        this.y = this.y * this.y;
+
+        return this;
+    }
+
+    squareRoot() {
+        this.x = Math.sqrt(this.x);
+        this.y = Math.sqrt(this.y);
+
+        return this;
+    }
+
+    sqrt = this.squareRoot;
 
     rotate(radians) {
         const x = this.x;

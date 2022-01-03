@@ -155,4 +155,8 @@ class GroundController {
 
         this.falling = (this.falling || this._currentFallingFrames > this.fallingFrames) && !this.jumping && !ground && !leftWall && !rightWall;
     }
+
+    applyForce(force) {
+        this.velocity.add(force);
+    }
 }
