@@ -10,5 +10,6 @@ const PixelScan = {
     ParallaxSprite,
     PerlinNoise,
     Camera,
+    Hash,
     extract,
 };
