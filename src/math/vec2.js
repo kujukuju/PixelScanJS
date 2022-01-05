@@ -11,6 +11,10 @@ class Vec2 {
         return new Vec2(vec.x, vec.y);
     }
 
+    static fromAngle(angle) {
+        return new Vec2(Math.cos(angle), Math.sin(angle));
+    }
+
     copy(vec) {
         this.x = vec.x;
         this.y = vec.y;
@@ -90,6 +94,16 @@ class Vec2 {
 
         return this;
     }
+
+    orthogonal() {
+        const x = this.x;
+        this.x = -this.y;
+        this.y = x;
+
+        return this;
+    }
+
+    ortho = this.orthogonal;
 
     normalize() {
         const length = this.magnitude();

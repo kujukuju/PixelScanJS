@@ -476,6 +476,10 @@ class Vec2 {
         return new Vec2(vec.x, vec.y);
     }
 
+    static fromAngle(angle) {
+        return new Vec2(Math.cos(angle), Math.sin(angle));
+    }
+
     copy(vec) {
         this.x = vec.x;
         this.y = vec.y;
@@ -555,6 +559,16 @@ class Vec2 {
 
         return this;
     }
+
+    orthogonal() {
+        const x = this.x;
+        this.x = -this.y;
+        this.y = x;
+
+        return this;
+    }
+
+    ortho = this.orthogonal;
 
     normalize() {
         const length = this.magnitude();
@@ -883,11 +897,12 @@ class World {
             const pixelNewPosition = new AABB(newPosition.x + aabb.x, newPosition.y + aabb.y, aabb.width, aabb.height);
             pixelNewPosition.round();
 
-            Renderer.debugCanvas.drawRect(pixelNewPosition.x, pixelNewPosition.y, pixelNewPosition.width, pixelNewPosition.height, 0xff0000);
-
-            const collision = checkCollisions(this, pixelNewPosition);
+            const collisionPixel = new Vec2();
+            const collision = checkCollisions(this, pixelNewPosition, collisionPixel);
             if (collision) {
-                const stepUpOffset = stepUp(this, pixelNewPosition, controller.allowedStepHeight);
+                const stepCollisionPixel = new Vec2();
+                const stepNormal = new Vec2();
+                const stepUpOffset = stepUp(this, controller, pixelNewPosition, stepCollisionPixel, stepNormal);
                 if (stepUpOffset !== 0) {
                     // TODO do this less stupidly
                     controller.jumping = false;
@@ -908,12 +923,18 @@ class World {
                     controller.normals.push(new Vec2(0, -1));
 
                     velocity.y = 0;
+
+                    Renderer.debugCanvas.drawLine(stepCollisionPixel.x, stepCollisionPixel.y, stepCollisionPixel.x + stepNormal.x * 20, stepCollisionPixel.y + stepNormal.y * 20);
                 } else {
                     // actual collision we can't resolve, for now stop here?
                     // paint_edges(collision_pixel.x, collision_pixel.y, velocity);
                     // controller.position.x = position.x;
                     // controller.position.y = position.y;
                     velocity.y = 0;
+
+                    const normal = getNormal(this, controller.velocity, collisionPixel);
+                    Renderer.debugCanvas.drawLine(collisionPixel.x, collisionPixel.y, collisionPixel.x + normal.x * 20, collisionPixel.y + normal.y * 20);
+
                     break;
                 }
             }
@@ -958,21 +979,153 @@ const paintEdges = (x, y, velocity) => {
 }
 
 // the original method also returned a point
-const checkCollisions = (world, aabb) => {
+const checkCollisions = (world, aabb, returnPixel) => {
     for (let x = 0; x < aabb.width; x++) {
         if (world.getPixel(aabb.x + x, aabb.y)) {
+            if (returnPixel) {
+                returnPixel.x = aabb.x + x;
+                returnPixel.y = aabb.y;
+            }
+
             return true;
         }
         if (world.getPixel(aabb.x + x, aabb.y + aabb.height - 1)) {
+            if (returnPixel) {
+                returnPixel.x = aabb.x + x;
+                returnPixel.y = aabb.y + aabb.height - 1;
+            }
+
             return true;
         }
     }
 
     for (let y = 0; y < aabb.height; y++) {
         if (world.getPixel(aabb.x, aabb.y + y)) {
+            if (returnPixel) {
+                returnPixel.x = aabb.x;
+                returnPixel.y = aabb.y + y;
+            }
+
             return true;
         }
         if (world.getPixel(aabb.x + aabb.width - 1, aabb.y + y)) {
+            if (returnPixel) {
+                returnPixel.x = aabb.x + aabb.width - 1;
+                returnPixel.y = aabb.y + y;
+            }
+            
+            return true;
+        }
+    }
+
+    return false;
+};
+
+const requiredLineAccuracy = 16;
+const rightPixel = new Vec2();
+const leftPixel = new Vec2();
+const startPixel = new Vec2();
+const nextPixel = new Vec2();
+const pixelOffsets = [
+    new Vec2(0, 0),
+    new Vec2(1, 0),
+    new Vec2(1, 1),
+    new Vec2(0, 1),
+];
+const getNormal = (world, velocity, pixel) => {
+    // left means, if your character is falling down to the ground, the left direction of the surface
+    leftPixel.copy(velocity).orthogonal();
+    let leftAngle = leftPixel.atan2();
+
+    rightPixel.copy(leftPixel).negate();
+    let rightAngle = rightPixel.atan2();
+
+    const startX = pixel.x + 0.5;
+    const startY = pixel.y + 0.5;
+
+    startPixel.copy(pixel);
+    if (getNextWallPixel(world, startPixel, leftAngle, nextPixel)) {
+        Renderer.debugCanvas.drawRect(nextPixel.x, nextPixel.y, 1, 1, 0xff0000);
+        // here we know that the nextPixel is valid because its only the second, so skip the corner check
+        // ccw most
+        let leftMostAngle = Math.atan2(nextPixel.y + pixelOffsets[0].y - startY, nextPixel.x + pixelOffsets[0].x - startX);
+        // cw most
+        let rightMostAngle = leftMostAngle;
+
+        // this is just the first pixel along the line, so get the widest angle possible
+        for (let i = 1; i < pixelOffsets.length; i++) {
+            const cornerX = nextPixel.x + pixelOffsets[i].x;
+            const cornerY = nextPixel.y + pixelOffsets[i].y;
+
+            const newAngle = Math.atan2(cornerY - startY, cornerX - startX);
+            if (radiansBetween(leftMostAngle, newAngle) < 0) {
+                leftMostAngle = newAngle;
+            }
+            if (radiansBetween(rightMostAngle, newAngle) > 0) {
+                rightMostAngle = newAngle;
+            }
+        }
+
+        // get the average of the possible line angle range
+        leftAngle = Math.atan2(nextPixel.y + 0.5 - startY, nextPixel.x + 0.5 - startX);
+
+        let count = 0;
+        while (count < requiredLineAccuracy) {
+            startPixel.copy(nextPixel);
+
+            if (!getNextWallPixel(world, startPixel, leftAngle, nextPixel)) {
+                break;
+            } else {
+                if (!validateCorners(startX, startY, nextPixel.x, nextPixel.y, leftMostAngle, rightMostAngle)) {
+                    break;
+                }
+
+                Renderer.debugCanvas.drawRect(nextPixel.x, nextPixel.y, 1, 1, 0xff0000);
+
+                let nextLeftMostAngle = Math.atan2(nextPixel.y + pixelOffsets[0].y - startY, nextPixel.x + pixelOffsets[0].x - startX);
+                let nextRightMostAngle = nextLeftMostAngle;
+
+                for (let i = 0; i < pixelOffsets.length; i++) {
+                    const cornerX = nextPixel.x + pixelOffsets[i].x;
+                    const cornerY = nextPixel.y + pixelOffsets[i].y;
+        
+                    const newAngle = Math.atan2(cornerY - startY, cornerX - startX);
+                    if (radiansBetween(nextLeftMostAngle, newAngle) < 0) {
+                        nextLeftMostAngle = newAngle;
+                    }
+                    if (radiansBetween(nextRightMostAngle, newAngle) > 0) {
+                        nextRightMostAngle = newAngle;
+                    }
+                }
+
+                // this is more restricting, so update it
+                if (radiansBetween(leftMostAngle, nextLeftMostAngle) > 0) {
+                    leftMostAngle = nextLeftMostAngle;
+                }
+                if (radiansBetween(rightMostAngle, nextRightMostAngle) < 0) {
+                    rightMostAngle = nextRightMostAngle;
+                }
+
+                leftAngle = Math.atan2(nextPixel.y + 0.5 - startY, nextPixel.x + 0.5 - startX);
+            }
+
+            count++;
+        }
+    }
+
+    Renderer.debugCanvas.drawRect(pixel.x, pixel.y, 1, 1, 0xffffff);
+
+    // temporary
+    return Vec2.fromAngle(leftAngle).orthogonal();
+};
+
+const validateCorners = (startX, startY, endX, endY, leftMostAngle, rightMostAngle) => {
+    for (let i = 0; i < pixelOffsets.length; i++) {
+        const cornerX = endX + pixelOffsets[i].x;
+        const cornerY = endY + pixelOffsets[i].y;
+
+        const angle = Math.atan2(cornerY - startY, cornerX - startX);
+        if (radiansBetween(leftMostAngle, angle) >= 0 && radiansBetween(rightMostAngle, angle) <= 0) {
             return true;
         }
     }
@@ -981,18 +1134,36 @@ const checkCollisions = (world, aabb) => {
 };
 
 // tries to step up from your current position, returns the necessary offset
+const stepPixel = new Vec2();
+const previousStepPixel = new Vec2();
 const stepAABB = new AABB();
-const stepUp = (world, aabb, height) => {
+const stepUp = (world, controller, aabb, returnCollisionPixel, returnNormal) => {
     stepAABB.width = aabb.width;
     stepAABB.height = aabb.height;
-    
-    for (let y = 0; y <= height; y++) {
+
+    let previouslyCollided = false;
+    for (let y = 0; y <= controller.allowedStepHeight; y++) {
         stepAABB.x = aabb.x;
         stepAABB.y = aabb.y - y;
 
-        if (!checkCollisions(world, stepAABB)) {
-            return y;
+        const collided = checkCollisions(world, stepAABB, stepPixel);
+        if (!collided && previouslyCollided) {
+            // get the floor angle from the collided step pixel and determine if its valid
+            const normal = getNormal(world, controller.velocity, previousStepPixel);
+            // if (normal.y <= -controller.groundNormalSlope) {
+                if (returnCollisionPixel) {
+                    returnCollisionPixel.copy(previousStepPixel);
+                }
+                if (returnNormal) {
+                    returnNormal.copy(normal);
+                }
+
+                return y;
+            // }
         }
+
+        previousStepPixel.copy(stepPixel);
+        previouslyCollided = collided;
     }
 
     return 0;
@@ -1002,87 +1173,59 @@ const stepUp = (world, aabb, height) => {
 // .[top left, top middle, top right, middle left, middle right, bottom left, bottom middle, bottom right]
 const found = [false, false, false, false, false, false, false, false];
 const pixels = [new Vec2(-1, -1), new Vec2(0, -1), new Vec2(1, -1), new Vec2(-1, 0), new Vec2(1, 0), new Vec2(-1, 1), new Vec2(0, 1), new Vec2(1, 1)];
-const angles = [Math.atan2(-1, -1), Math.atan2(0, -1), Math.atan2(1, -1), Math.atan2(-1, 0), Math.atan2(1, 0), Math.atan2(-1, 1), Math.atan2(0, 1), Math.atan2(1, 1)];
-const getNextWallPixel = (world, x, y, angle, mostAccuratePixel) => {    
+const angles = [pixels[0].atan2(), pixels[1].atan2(), pixels[2].atan2(), pixels[3].atan2(), pixels[4].atan2(), pixels[5].atan2(), pixels[6].atan2(), pixels[7].atan2()];
+const getNextWallPixel = (world, pixel, angle, mostAccuratePixel) => {    
+    for (let i = 0; i < found.length; i++) {
+        found[i] = false;
+    }
+
     // the problem is that this pixel could easily have a wall facing the opposite way of the player, but do we care?
     // no we dont care, I dont think
-    if (world.getPixel(x - 1, y - 1)) {
-        // pixel to the right is transparent
-        if (!world.getPixel(x, y - 1)) {
-            found[0] = true;
-        }
-        // pixel below is transparent
-        if (!world.getPixel(x - 1, y)) {
+    if (world.getPixel(pixel.x - 1, pixel.y - 1)) {
+        // pixel to the right is transparent or pixel below is transparent
+        if (!world.getPixel(pixel.x, pixel.y - 1) || !world.getPixel(pixel.x - 1, pixel.y)) {
             found[0] = true;
         }
     }
-    if (world.getPixel(x, y - 1)) {
-        // pixel to the left is transparent
-        if (!world.getPixel(x - 1, y - 1)) {
-            found[1] = true;
-        }
-        // pixel to the right is transparent
-        if (!world.getPixel(x + 1, y - 1)) {
+    if (world.getPixel(pixel.x, pixel.y - 1)) {
+        // pixel to the left is transparent or pixel to the right is transparent
+        if (!world.getPixel(pixel.x - 1, pixel.y - 1) || !world.getPixel(pixel.x + 1, pixel.y - 1)) {
             found[1] = true;
         }
     }
-    if (world.getPixel(x + 1, y - 1)) {
-        // pixel to the left is transparent
-        if (!world.getPixel(x, y - 1)) {
-            found[2] = true;
-        }
-        // pixel below is transparent
-        if (!world.getPixel(x + 1, y)) {
+    if (world.getPixel(pixel.x + 1, pixel.y - 1)) {
+        // pixel to the left is transparent or pixel below is transparent
+        if (!world.getPixel(pixel.x, pixel.y - 1) || !world.getPixel(pixel.x + 1, pixel.y)) {
             found[2] = true;
         }
     }
-    if (world.getPixel(x - 1, y)) {
-        // pixel above is transparent
-        if (!world.getPixel(x - 1, y - 1)) {
-            found[3] = true;
-        }
-        // pixel below is transparent
-        if (!world.getPixel(x - 1, y + 1)) {
+    if (world.getPixel(pixel.x - 1, pixel.y)) {
+        // pixel above is transparent or pixel below is transparent
+        if (!world.getPixel(pixel.x - 1, pixel.y - 1) || !world.getPixel(pixel.x - 1, pixel.y + 1)) {
             found[3] = true;
         }
     }
-    if (world.getPixel(x + 1, y)) {
-        // pixel above is transparent
-        if (!world.getPixel(x + 1, y - 1)) {
-            found[4] = true;
-        }
-        // pixel below is transparent
-        if (!world.getPixel(x + 1, y + 1)) {
+    if (world.getPixel(pixel.x + 1, pixel.y)) {
+        // pixel above is transparent or pixel below is transparent
+        if (!world.getPixel(pixel.x + 1, pixel.y - 1) || !world.getPixel(pixel.x + 1, pixel.y + 1)) {
             found[4] = true;
         }
     }
-    if (world.getPixel(x - 1, y + 1)) {
-        // pixel to the right is transparent
-        if (!world.getPixel(x, y + 1)) {
-            found[5] = true;
-        }
-        // pixel above is transparent
-        if (!world.getPixel(x - 1, y)) {
+    if (world.getPixel(pixel.x - 1, pixel.y + 1)) {
+        // pixel to the right is transparent or pixel above is transparent
+        if (!world.getPixel(pixel.x, pixel.y + 1) || !world.getPixel(pixel.x - 1, pixel.y)) {
             found[5] = true;
         }
     }
-    if (world.getPixel(x, y + 1)) {
-        // pixel to the left is transparent
-        if (!world.getPixel(x - 1, y + 1)) {
-            found[6] = true;
-        }
-        // pixel to the right is transparent
-        if (!world.getPixel(x + 1, y + 1)) {
+    if (world.getPixel(pixel.x, pixel.y + 1)) {
+        // pixel to the left is transparent or pixel to the right is transparent
+        if (!world.getPixel(pixel.x - 1, pixel.y + 1) || !world.getPixel(pixel.x + 1, pixel.y + 1)) {
             found[6] = true;
         }
     }
-    if (world.getPixel(x + 1, y + 1)) {
-        // pixel to the left is transparent
-        if (!world.getPixel(x, y + 1)) {
-            found[7] = true;
-        }
-        // pixel above is transparent
-        if (!world.getPixel(x + 1, y)) {
+    if (world.getPixel(pixel.x + 1, pixel.y + 1)) {
+        // pixel to the left is transparent or pixel above is transparent
+        if (!world.getPixel(pixel.x, pixel.y + 1) || !world.getPixel(pixel.x + 1, pixel.y)) {
             found[7] = true;
         }
     }
@@ -1105,8 +1248,8 @@ const getNextWallPixel = (world, x, y, angle, mostAccuratePixel) => {
 
         const absAngleDiff = Math.abs(radiansBetween(angle, angles[i]));
         if (!validPixel || absAngleDiff < mostAccurateAbsAngleDiff) {
-            mostAccuratePixel.x = pixels[i].x + x;
-            mostAccuratePixel.y = pixels[i].y + y;
+            mostAccuratePixel.x = pixels[i].x + pixel.x;
+            mostAccuratePixel.y = pixels[i].y + pixel.y;
             mostAccurateAbsAngleDiff = absAngleDiff;
         }
 
@@ -1455,6 +1598,18 @@ class DebugCanvas extends PIXI.Graphics {
         super.drawRect(x, y, width, height);
 
         this.endFill();
+    }
+
+    drawLine(x1, y1, x2, y2, color, alpha) {
+        color = color || 0;
+        alpha = alpha === undefined ? 1 : alpha;
+
+        this.lineStyle(1, color, alpha);
+
+        this.moveTo(x1, y1);
+        this.lineTo(x2, y2);
+        
+        this.closePath();
     }
 
     render(renderer) {

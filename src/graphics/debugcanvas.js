@@ -14,6 +14,18 @@ class DebugCanvas extends PIXI.Graphics {
         this.endFill();
     }
 
+    drawLine(x1, y1, x2, y2, color, alpha) {
+        color = color || 0;
+        alpha = alpha === undefined ? 1 : alpha;
+
+        this.lineStyle(1, color, alpha);
+
+        this.moveTo(x1, y1);
+        this.lineTo(x2, y2);
+        
+        this.closePath();
+    }
+
     render(renderer) {
         super.render(renderer);
 
