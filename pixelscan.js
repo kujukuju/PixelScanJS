@@ -639,7 +639,7 @@ class GroundController {
     falling = false;
     normals = [];
     accel = 2;
-    friction = 1.5;
+    friction = 0.75;
     // the fricton that is applied on top of default friction once you've exceeded max speed
     terminalFriction = 0.15;
     speed = 4;
@@ -647,7 +647,7 @@ class GroundController {
     groundNormalSlope = 0.8660254037844386;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
     wallNormalSlope = 0.8660254037844386;
-    groundJumpVelocity = 6;
+    groundJumpVelocity = 5.4;
     wallJumpVelocity = 12;
     fallingFrames = 10;
     allowedStepHeight = 6;
@@ -661,39 +661,6 @@ class GroundController {
     }
 
     applyAcceleration(up, left, down, right) {
-        let accelX = 0;
-        if (left) {
-            accelX -= this.accel;
-        }
-        if (right) {
-            accelX += this.accel;
-        }
-    
-        const initialVelocityX = this.velocity.x;
-        if (Math.abs(this.velocity.x + accelX) <= this.friction) {
-            this.velocity.x = 0;
-        } else {
-            this.velocity.x += accelX;
-            this.velocity.x -= Math.sign(this.velocity.x) * this.friction;
-        }
-    
-        if (Math.abs(initialVelocityX) > this.speed && Math.abs(this.velocity.x) > this.speed) {
-            if (Math.abs(this.velocity.x) > Math.abs(initialVelocityX)) {
-                // in this scenario we want to match the previously applied acceleration to the friciton to only cancel it out, then apply the terminal friction on top
-                this.velocity.x -= (accelX - Math.sign(accelX) * this.friction);
-            }
-    
-            if (Math.abs(this.velocity.x) - this.terminalFriction <= this.speed) {
-                // because we're able to go past the max speed using the terminal friction we only adjust to the max speed
-                this.velocity.x = Math.sign(this.velocity.x) * this.speed;
-            } else {
-                this.velocity.x -= Math.sign(this.velocity.x) * this.terminalFriction;
-            }
-        } else if (Math.abs(this.velocity.x) > this.speed) {
-            // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
-            this.velocity.x = Math.sign(this.velocity.x) * this.speed;
-        }
-
         let ground = false;
         let leftWall = false;
         let rightWall = false;
@@ -710,13 +677,48 @@ class GroundController {
                 leftWall = true;
             }
         }
+
+        let accelX = 0;
+        if (left) {
+            accelX -= this.accel;
+        }
+        if (right) {
+            accelX += this.accel;
+        }
+
+        const friction = ground ? this.friction : this.friction / 1;
+    
+        // TODO when not on ground dont apply friction
+        const initialVelocityX = this.velocity.x;
+        if (Math.abs(this.velocity.x + accelX) <= friction) {
+            this.velocity.x = 0;
+        } else {
+            this.velocity.x += accelX;
+            this.velocity.x -= Math.sign(this.velocity.x) * friction;
+        }
+    
+        if (Math.abs(initialVelocityX) > this.speed && Math.abs(this.velocity.x) > this.speed) {
+            if (Math.abs(this.velocity.x) > Math.abs(initialVelocityX)) {
+                // in this scenario we want to match the previously applied acceleration to the friciton to only cancel it out, then apply the terminal friction on top
+                this.velocity.x -= (accelX - Math.sign(accelX) * friction);
+            }
+    
+            if (Math.abs(this.velocity.x) - this.terminalFriction <= this.speed) {
+                // because we're able to go past the max speed using the terminal friction we only adjust to the max speed
+                this.velocity.x = Math.sign(this.velocity.x) * this.speed;
+            } else {
+                this.velocity.x -= Math.sign(this.velocity.x) * this.terminalFriction;
+            }
+        } else if (Math.abs(this.velocity.x) > this.speed) {
+            // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
+            this.velocity.x = Math.sign(this.velocity.x) * this.speed;
+        }
     
         // clear the jumping flag if you're not jumping
         if (this.jumping && (!up || ground || leftWall || rightWall)) {
             this.falling = true;
             this.jumping = false;
         }
-        // this.jumping = this.jumping && up && !ground && !leftWall && !rightWall;
     
         // jump if you're trying to and able to
         if (ground || leftWall || rightWall) {
@@ -759,7 +761,7 @@ class GroundController {
             const finalProgress = this._jumpingDelta / 400;
 
             let integratedJumpingForce = 1.0 / (startProgress + 1) - 1.0 / (finalProgress + 1);
-            integratedJumpingForce *= 0.42 * 4.5 * 4;
+            integratedJumpingForce *= 8;
 
             this._jumpingForce = 1.0 / (progress * (progress + 2) + 1);
             this._jumpingForce *= 0.0042;
@@ -829,6 +831,16 @@ class World {
         }
     }
 
+    // physics logic for walls
+    // when you've collided with a wall, get the normal angle of that wall
+    // add it to the restricted angles thing
+    // adjust the velocity of your character to be projected onto the perpendicular to the normal of that wall clamped by the restricted angles thing
+    // try to resolve the collision:
+    //     find the vector to the nearest adjacent pixel defined by the restricted angle
+    //     move the character to the nearest adjacent pixel along this vector
+    //     add this normal to the restricted normal list
+    //     repeat until you've exhausted your velocity I guess, and if you're still in a wall go back to the beginning pixel and set your velocity to 0
+
     resolvePhysics(controller, aabb) {
         let bodyFallingSpeed = Vec2.copy(controller.velocity).projectOnto(this.gravity).length() * 0.01 * this.airResistance;
         if (controller.velocity.dot(this.gravity) <= 0) {
@@ -871,6 +883,8 @@ class World {
             const pixelNewPosition = new AABB(newPosition.x + aabb.x, newPosition.y + aabb.y, aabb.width, aabb.height);
             pixelNewPosition.round();
 
+            Renderer.debugCanvas.drawRect(pixelNewPosition.x, pixelNewPosition.y, pixelNewPosition.width, pixelNewPosition.height, 0xff0000);
+
             const collision = checkCollisions(this, pixelNewPosition);
             if (collision) {
                 const stepUpOffset = stepUp(this, pixelNewPosition, controller.allowedStepHeight);
@@ -910,8 +924,8 @@ class World {
             remainingLength = Math.max(remainingLength - 1.0, 0);
         }
     
-        controller.position.x = Math.round(position.x);
-        controller.position.y = Math.round(position.y);
+        controller.position.x = position.x;
+        controller.position.y = position.y;
         controller.velocity.x = velocity.x;
         controller.velocity.y = velocity.y;
     }
@@ -1263,16 +1277,8 @@ class Camera {
 
     static containers = [];
 
-    static positionSpeed = 0;
-    static positionAccel = 1;
-    static minimumPositionSpeed = 2;
-    static maximumPositionSpeed = 80;
-    static maximumPositionDistance = 200;
-    static scaleSpeed = 0;
-    static scaleAccel = 0.001;
-    static minimumScaleSpeed = 0.02;
-    static maximumScaleSpeed = 0.2;
-    static maximumScaleDistance = 0.5;
+    static positionSpeedStrength = 0.5;
+    static scaleSpeedStrength = 0.05;
 
     static shakeDuration = 15;
     static shakeIntensity = 10;
@@ -1282,13 +1288,15 @@ class Camera {
     static shakeSeedHorizontal = 0;
     static shakeSeedVertical = 0;
 
+    static cameraHeight = 1080;
+
     static setPosition(position) {
-        Camera.nextPosition.copy(position);
+        Camera.nextPosition.copy(position).round();
     }
 
     static setPositionImmediate(position) {
-        Camera.nextPosition.copy(position);
-        Camera.position.copy(position);
+        Camera.nextPosition.copy(position).round();
+        Camera.position.copy(position).round();
     }
 
     static setScale(scale) {
@@ -1308,14 +1316,11 @@ class Camera {
         Camera.shakeSeedVertical = Math.random();
     }
 
-    static setSpeedProperties(accel, minumumSpeed, maximumSpeed, maxmimuDistance) {
-        this.positionAccel = accel;
-        this.minimumPositionSpeed = minumumSpeed;
-        this.maximumPositionSpeed = maximumSpeed;
-        this.maximumPositionDistance = maxmimuDistance;
+    static setSpeedProperties(strength) {
+        this.positionSpeedStrength = strength;
     }
 
-    static setScaleProperties(accel, minumumSpeed, maximumSpeed, maximumScale) {
+    static setScaleProperties(strength) {
         this.scaleAccel = accel;
         this.minimumScaleSpeed = minumumSpeed;
         this.maximumScaleSpeed = maximumSpeed;
@@ -1325,6 +1330,10 @@ class Camera {
     static setShakeProperties(duration, falloff) {
         Camera.shakeDuration = duration;
         Camera.shakeFalloff = falloff;
+    }
+
+    static setCameraHeight(height) {
+        Camera.cameraHeight = height;
     }
 
     static update() {
@@ -1344,45 +1353,42 @@ class Camera {
         const positionDeltaX = Camera.nextPosition.x - Camera.position.x;
         const positionDeltaY = Camera.nextPosition.y - Camera.position.y;
         const positionDeltaLength = Math.sqrt(positionDeltaX * positionDeltaX + positionDeltaY * positionDeltaY);
-        const positionDeltaProgress = positionDeltaLength / Camera.maximumPositionDistance;
-        const currentMaxPositionSpeed = (Math.cos(positionDeltaProgress * Math.PI * 2 + Math.PI) + 1) / 2 * (Camera.maximumPositionSpeed - Camera.minimumPositionSpeed) + Camera.minimumPositionSpeed;
-
-        Camera.positionSpeed = Math.max(Math.min(Camera.positionSpeed + Camera.positionAccel, currentMaxPositionSpeed), Camera.minimumPositionSpeed);
-        if (positionDeltaLength <= Camera.positionSpeed) {
+        if (positionDeltaLength <= 0.5) {
             Camera.position.copy(Camera.nextPosition);
         } else {
-            Camera.position.x += Math.sign(positionDeltaX) * Camera.positionSpeed * (Math.abs(positionDeltaX) / positionDeltaLength);
-            Camera.position.y += Math.sign(positionDeltaY) * Camera.positionSpeed * (Math.abs(positionDeltaY) / positionDeltaLength);
+            Camera.position.x += positionDeltaX * Camera.positionSpeedStrength;
+            Camera.position.y += positionDeltaY * Camera.positionSpeedStrength;
         }
 
         const scaleDelta = Camera.nextScale.x - Camera.scale.x;
-        const scaleDeltaProgress = Math.abs(scaleDelta) / Camera.maximumScaleDistance;
-        const currentMaxScaleSpeed = (Math.cos(scaleDeltaProgress * Math.PI * 2 + Math.PI) + 1) / 2 * (Camera.maximumScaleSpeed - Camera.minimumScaleSpeed) + Camera.minimumScaleSpeed;
-
-        Camera.scaleSpeed = Math.max(Math.min(Camera.scaleSpeed + Camera.scaleAccel, currentMaxScaleSpeed), Camera.minimumScaleSpeed);
-        if (Math.abs(scaleDelta) <= Camera.scaleSpeed) {
+        if (Math.abs(scaleDelta) <= 0.01) {
             Camera.scale.copy(Camera.nextScale);
         } else {
-            Camera.scale.x += Math.sign(scaleDelta) * Camera.scaleSpeed;
+            Camera.scale.x += scaleDelta * Camera.scaleSpeedStrength;
             Camera.scale.y = Camera.scale.x;
         }
 
         const width = window.innerWidth;
         const height = window.innerHeight;
 
-        Camera.aabb.x = Camera.position.x - width / 2 / Camera.scale.x + shakeX;
-        Camera.aabb.y = Camera.position.y - height / 2 / Camera.scale.y + shakeY;
-        Camera.aabb.width = width / Camera.scale.x;
-        Camera.aabb.height = height / Camera.scale.y;
+        const heightScale = height / Camera.cameraHeight;
 
-        const x = Camera.aabb.width / 2 * Camera.scale.x - Camera.position.x * Camera.scale.x;
-        const y = Camera.aabb.height / 2 * Camera.scale.y - Camera.position.y * Camera.scale.y;
+        const scaleX = Camera.scale.x * heightScale;
+        const scaleY = Camera.scale.y * heightScale;
+
+        Camera.aabb.x = Camera.position.x - width / 2 / scaleX + shakeX;
+        Camera.aabb.y = Camera.position.y - height / 2 / scaleY + shakeY;
+        Camera.aabb.width = width / scaleX;
+        Camera.aabb.height = height / scaleY;
+
+        const x = Camera.aabb.width / 2 * scaleX - Camera.position.x * scaleX;
+        const y = Camera.aabb.height / 2 * scaleY - Camera.position.y * scaleY;
 
         for (let i = 0; i < Camera.containers.length; i++) {
             Camera.containers[i].position.x = x + shakeX;
             Camera.containers[i].position.y = y + shakeY;
-            Camera.containers[i].scale.x = Camera.scale.x;
-            Camera.containers[i].scale.y = Camera.scale.y;
+            Camera.containers[i].scale.x = scaleX;
+            Camera.containers[i].scale.y = scaleY;
         }
     }
 
@@ -1435,6 +1441,28 @@ class Hash {
         return value;
     }
 }
+class DebugCanvas extends PIXI.Graphics {
+    constructor() {
+        super();
+    }
+
+    drawRect(x, y, width, height, color, alpha) {
+        color = color || 0;
+        alpha = alpha === undefined ? 1 : alpha;
+
+        this.beginFill(color, alpha);
+
+        super.drawRect(x, y, width, height);
+
+        this.endFill();
+    }
+
+    render(renderer) {
+        super.render(renderer);
+
+        this.clear();
+    }
+}
 const PixelScan = {
     FramedSprite,
     AABB,
@@ -1448,6 +1476,7 @@ const PixelScan = {
     PerlinNoise,
     Camera,
     Hash,
+    DebugCanvas,
     extract,
 };
 return PixelScan;

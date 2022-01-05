@@ -5,7 +5,7 @@ class GroundController {
     falling = false;
     normals = [];
     accel = 2;
-    friction = 1.5;
+    friction = 0.75;
     // the fricton that is applied on top of default friction once you've exceeded max speed
     terminalFriction = 0.15;
     speed = 4;
@@ -13,7 +13,7 @@ class GroundController {
     groundNormalSlope = 0.8660254037844386;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
     wallNormalSlope = 0.8660254037844386;
-    groundJumpVelocity = 6;
+    groundJumpVelocity = 5.4;
     wallJumpVelocity = 12;
     fallingFrames = 10;
     allowedStepHeight = 6;
@@ -27,39 +27,6 @@ class GroundController {
     }
 
     applyAcceleration(up, left, down, right) {
-        let accelX = 0;
-        if (left) {
-            accelX -= this.accel;
-        }
-        if (right) {
-            accelX += this.accel;
-        }
-    
-        const initialVelocityX = this.velocity.x;
-        if (Math.abs(this.velocity.x + accelX) <= this.friction) {
-            this.velocity.x = 0;
-        } else {
-            this.velocity.x += accelX;
-            this.velocity.x -= Math.sign(this.velocity.x) * this.friction;
-        }
-    
-        if (Math.abs(initialVelocityX) > this.speed && Math.abs(this.velocity.x) > this.speed) {
-            if (Math.abs(this.velocity.x) > Math.abs(initialVelocityX)) {
-                // in this scenario we want to match the previously applied acceleration to the friciton to only cancel it out, then apply the terminal friction on top
-                this.velocity.x -= (accelX - Math.sign(accelX) * this.friction);
-            }
-    
-            if (Math.abs(this.velocity.x) - this.terminalFriction <= this.speed) {
-                // because we're able to go past the max speed using the terminal friction we only adjust to the max speed
-                this.velocity.x = Math.sign(this.velocity.x) * this.speed;
-            } else {
-                this.velocity.x -= Math.sign(this.velocity.x) * this.terminalFriction;
-            }
-        } else if (Math.abs(this.velocity.x) > this.speed) {
-            // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
-            this.velocity.x = Math.sign(this.velocity.x) * this.speed;
-        }
-
         let ground = false;
         let leftWall = false;
         let rightWall = false;
@@ -76,13 +43,48 @@ class GroundController {
                 leftWall = true;
             }
         }
+
+        let accelX = 0;
+        if (left) {
+            accelX -= this.accel;
+        }
+        if (right) {
+            accelX += this.accel;
+        }
+
+        const friction = ground ? this.friction : this.friction / 1;
+    
+        // TODO when not on ground dont apply friction
+        const initialVelocityX = this.velocity.x;
+        if (Math.abs(this.velocity.x + accelX) <= friction) {
+            this.velocity.x = 0;
+        } else {
+            this.velocity.x += accelX;
+            this.velocity.x -= Math.sign(this.velocity.x) * friction;
+        }
+    
+        if (Math.abs(initialVelocityX) > this.speed && Math.abs(this.velocity.x) > this.speed) {
+            if (Math.abs(this.velocity.x) > Math.abs(initialVelocityX)) {
+                // in this scenario we want to match the previously applied acceleration to the friciton to only cancel it out, then apply the terminal friction on top
+                this.velocity.x -= (accelX - Math.sign(accelX) * friction);
+            }
+    
+            if (Math.abs(this.velocity.x) - this.terminalFriction <= this.speed) {
+                // because we're able to go past the max speed using the terminal friction we only adjust to the max speed
+                this.velocity.x = Math.sign(this.velocity.x) * this.speed;
+            } else {
+                this.velocity.x -= Math.sign(this.velocity.x) * this.terminalFriction;
+            }
+        } else if (Math.abs(this.velocity.x) > this.speed) {
+            // if this scenario we want to slow you down to the maximum speed because we were the ones that applied you to be above it
+            this.velocity.x = Math.sign(this.velocity.x) * this.speed;
+        }
     
         // clear the jumping flag if you're not jumping
         if (this.jumping && (!up || ground || leftWall || rightWall)) {
             this.falling = true;
             this.jumping = false;
         }
-        // this.jumping = this.jumping && up && !ground && !leftWall && !rightWall;
     
         // jump if you're trying to and able to
         if (ground || leftWall || rightWall) {
@@ -125,7 +127,7 @@ class GroundController {
             const finalProgress = this._jumpingDelta / 400;
 
             let integratedJumpingForce = 1.0 / (startProgress + 1) - 1.0 / (finalProgress + 1);
-            integratedJumpingForce *= 0.42 * 4.5 * 4;
+            integratedJumpingForce *= 8;
 
             this._jumpingForce = 1.0 / (progress * (progress + 2) + 1);
             this._jumpingForce *= 0.0042;

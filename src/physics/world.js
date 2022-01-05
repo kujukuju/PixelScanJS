@@ -33,6 +33,16 @@ class World {
         }
     }
 
+    // physics logic for walls
+    // when you've collided with a wall, get the normal angle of that wall
+    // add it to the restricted angles thing
+    // adjust the velocity of your character to be projected onto the perpendicular to the normal of that wall clamped by the restricted angles thing
+    // try to resolve the collision:
+    //     find the vector to the nearest adjacent pixel defined by the restricted angle
+    //     move the character to the nearest adjacent pixel along this vector
+    //     add this normal to the restricted normal list
+    //     repeat until you've exhausted your velocity I guess, and if you're still in a wall go back to the beginning pixel and set your velocity to 0
+
     resolvePhysics(controller, aabb) {
         let bodyFallingSpeed = Vec2.copy(controller.velocity).projectOnto(this.gravity).length() * 0.01 * this.airResistance;
         if (controller.velocity.dot(this.gravity) <= 0) {
@@ -75,6 +85,8 @@ class World {
             const pixelNewPosition = new AABB(newPosition.x + aabb.x, newPosition.y + aabb.y, aabb.width, aabb.height);
             pixelNewPosition.round();
 
+            Renderer.debugCanvas.drawRect(pixelNewPosition.x, pixelNewPosition.y, pixelNewPosition.width, pixelNewPosition.height, 0xff0000);
+
             const collision = checkCollisions(this, pixelNewPosition);
             if (collision) {
                 const stepUpOffset = stepUp(this, pixelNewPosition, controller.allowedStepHeight);
@@ -114,8 +126,8 @@ class World {
             remainingLength = Math.max(remainingLength - 1.0, 0);
         }
     
-        controller.position.x = Math.round(position.x);
-        controller.position.y = Math.round(position.y);
+        controller.position.x = position.x;
+        controller.position.y = position.y;
         controller.velocity.x = velocity.x;
         controller.velocity.y = velocity.y;
     }

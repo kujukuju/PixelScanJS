@@ -11,5 +11,6 @@ const PixelScan = {
     PerlinNoise,
     Camera,
     Hash,
+    DebugCanvas,
     extract,
 };

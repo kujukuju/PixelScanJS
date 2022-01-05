@@ -8,16 +8,8 @@ class Camera {
 
     static containers = [];
 
-    static positionSpeed = 0;
-    static positionAccel = 1;
-    static minimumPositionSpeed = 2;
-    static maximumPositionSpeed = 80;
-    static maximumPositionDistance = 200;
-    static scaleSpeed = 0;
-    static scaleAccel = 0.001;
-    static minimumScaleSpeed = 0.02;
-    static maximumScaleSpeed = 0.2;
-    static maximumScaleDistance = 0.5;
+    static positionSpeedStrength = 0.5;
+    static scaleSpeedStrength = 0.05;
 
     static shakeDuration = 15;
     static shakeIntensity = 10;
@@ -27,13 +19,15 @@ class Camera {
     static shakeSeedHorizontal = 0;
     static shakeSeedVertical = 0;
 
+    static cameraHeight = 1080;
+
     static setPosition(position) {
-        Camera.nextPosition.copy(position);
+        Camera.nextPosition.copy(position).round();
     }
 
     static setPositionImmediate(position) {
-        Camera.nextPosition.copy(position);
-        Camera.position.copy(position);
+        Camera.nextPosition.copy(position).round();
+        Camera.position.copy(position).round();
     }
 
     static setScale(scale) {
@@ -53,14 +47,11 @@ class Camera {
         Camera.shakeSeedVertical = Math.random();
     }
 
-    static setSpeedProperties(accel, minumumSpeed, maximumSpeed, maxmimuDistance) {
-        this.positionAccel = accel;
-        this.minimumPositionSpeed = minumumSpeed;
-        this.maximumPositionSpeed = maximumSpeed;
-        this.maximumPositionDistance = maxmimuDistance;
+    static setSpeedProperties(strength) {
+        this.positionSpeedStrength = strength;
     }
 
-    static setScaleProperties(accel, minumumSpeed, maximumSpeed, maximumScale) {
+    static setScaleProperties(strength) {
         this.scaleAccel = accel;
         this.minimumScaleSpeed = minumumSpeed;
         this.maximumScaleSpeed = maximumSpeed;
@@ -70,6 +61,10 @@ class Camera {
     static setShakeProperties(duration, falloff) {
         Camera.shakeDuration = duration;
         Camera.shakeFalloff = falloff;
+    }
+
+    static setCameraHeight(height) {
+        Camera.cameraHeight = height;
     }
 
     static update() {
@@ -89,45 +84,42 @@ class Camera {
         const positionDeltaX = Camera.nextPosition.x - Camera.position.x;
         const positionDeltaY = Camera.nextPosition.y - Camera.position.y;
         const positionDeltaLength = Math.sqrt(positionDeltaX * positionDeltaX + positionDeltaY * positionDeltaY);
-        const positionDeltaProgress = positionDeltaLength / Camera.maximumPositionDistance;
-        const currentMaxPositionSpeed = (Math.cos(positionDeltaProgress * Math.PI * 2 + Math.PI) + 1) / 2 * (Camera.maximumPositionSpeed - Camera.minimumPositionSpeed) + Camera.minimumPositionSpeed;
-
-        Camera.positionSpeed = Math.max(Math.min(Camera.positionSpeed + Camera.positionAccel, currentMaxPositionSpeed), Camera.minimumPositionSpeed);
-        if (positionDeltaLength <= Camera.positionSpeed) {
+        if (positionDeltaLength <= 0.5) {
             Camera.position.copy(Camera.nextPosition);
         } else {
-            Camera.position.x += Math.sign(positionDeltaX) * Camera.positionSpeed * (Math.abs(positionDeltaX) / positionDeltaLength);
-            Camera.position.y += Math.sign(positionDeltaY) * Camera.positionSpeed * (Math.abs(positionDeltaY) / positionDeltaLength);
+            Camera.position.x += positionDeltaX * Camera.positionSpeedStrength;
+            Camera.position.y += positionDeltaY * Camera.positionSpeedStrength;
         }
 
         const scaleDelta = Camera.nextScale.x - Camera.scale.x;
-        const scaleDeltaProgress = Math.abs(scaleDelta) / Camera.maximumScaleDistance;
-        const currentMaxScaleSpeed = (Math.cos(scaleDeltaProgress * Math.PI * 2 + Math.PI) + 1) / 2 * (Camera.maximumScaleSpeed - Camera.minimumScaleSpeed) + Camera.minimumScaleSpeed;
-
-        Camera.scaleSpeed = Math.max(Math.min(Camera.scaleSpeed + Camera.scaleAccel, currentMaxScaleSpeed), Camera.minimumScaleSpeed);
-        if (Math.abs(scaleDelta) <= Camera.scaleSpeed) {
+        if (Math.abs(scaleDelta) <= 0.01) {
             Camera.scale.copy(Camera.nextScale);
         } else {
-            Camera.scale.x += Math.sign(scaleDelta) * Camera.scaleSpeed;
+            Camera.scale.x += scaleDelta * Camera.scaleSpeedStrength;
             Camera.scale.y = Camera.scale.x;
         }
 
         const width = window.innerWidth;
         const height = window.innerHeight;
 
-        Camera.aabb.x = Camera.position.x - width / 2 / Camera.scale.x + shakeX;
-        Camera.aabb.y = Camera.position.y - height / 2 / Camera.scale.y + shakeY;
-        Camera.aabb.width = width / Camera.scale.x;
-        Camera.aabb.height = height / Camera.scale.y;
+        const heightScale = height / Camera.cameraHeight;
 
-        const x = Camera.aabb.width / 2 * Camera.scale.x - Camera.position.x * Camera.scale.x;
-        const y = Camera.aabb.height / 2 * Camera.scale.y - Camera.position.y * Camera.scale.y;
+        const scaleX = Camera.scale.x * heightScale;
+        const scaleY = Camera.scale.y * heightScale;
+
+        Camera.aabb.x = Camera.position.x - width / 2 / scaleX + shakeX;
+        Camera.aabb.y = Camera.position.y - height / 2 / scaleY + shakeY;
+        Camera.aabb.width = width / scaleX;
+        Camera.aabb.height = height / scaleY;
+
+        const x = Camera.aabb.width / 2 * scaleX - Camera.position.x * scaleX;
+        const y = Camera.aabb.height / 2 * scaleY - Camera.position.y * scaleY;
 
         for (let i = 0; i < Camera.containers.length; i++) {
             Camera.containers[i].position.x = x + shakeX;
             Camera.containers[i].position.y = y + shakeY;
-            Camera.containers[i].scale.x = Camera.scale.x;
-            Camera.containers[i].scale.y = Camera.scale.y;
+            Camera.containers[i].scale.x = scaleX;
+            Camera.containers[i].scale.y = scaleY;
         }
     }
 
