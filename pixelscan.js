@@ -535,7 +535,7 @@ class Camera {
         if (Camera.remainingShakeDuration > 0) {
             Camera.remainingShakeDuration--;
 
-            // its okay if progress goes past 1 because it wraps around
+            // its okay if progress goes past 1 because it wraps around 
             const progress = (Camera.shakeDuration - Camera.remainingShakeDuration) / 30;
             const shake = Camera.shakeIntensity - Camera.shakeIntensity * progress * Camera.shakeFalloff;
 
@@ -3487,11 +3487,14 @@ class GroundController {
     allowedStepHeight = 6;
     gravityScale = 1;
 
-    canJumpLeftWall = true;
-    canJumpRightWall = true;
+    slidingLeft = false;
+    slidingRight = false;
 
     releasedJumpButton = true;
-    releasedJumpButtonWall = false;
+
+    jumpVector = new Vec2(0, 0);
+
+    enableWallJumping = false;
 
     _jumpingForce = 0;
     _jumpingDelta = 0;
@@ -3519,23 +3522,22 @@ class GroundController {
             }
         }
 
+        if (leftWall || rightWall) {
+            this.slidingLeft = leftWall;
+            this.slidingRight = rightWall;
+            if (this.enableWallJumping) {
+                this.velocity.y = Math.min(this.velocity.y, 1);
+            }
+        }
+
+        if (!this.enableWallJumping) {
+            leftWall = false;
+            rightWall = false;
+        }
+
         if (!up && !this.releasedJumpButton) {
             this.releasedJumpButton = true;
         }
-
-        leftWall = leftWall && this.canJumpLeftWall;
-        rightWall = rightWall && this.canJumpRightWall;
-        if (leftWall || rightWall) {
-            // if (!up) {
-            //     this.releasedJumpButtonWall = true;
-            // }
-        } else {
-            this.releasedJumpButtonWall = false;
-        }
-
-        // TODO temporary remove wall jumping
-        // leftWall = false;
-        // rightWall = false;
 
         let accelX = 0;
         if (left) {
@@ -3549,6 +3551,9 @@ class GroundController {
         for (let i = 0; i < this.normals.length; i++) {
             // if this isnt ground try and project your accel if its going into the normal
             if (this.normals[i].y >= -this.groundNormalSlope) {
+                // if (Math.sign(this.normals[i].x) == -Math.sign(accelX)) {
+                //     accelX = 0;
+                // }
                 projectVelocityIfNecessary(this.normals[i], accelVec);
             }
         }
@@ -3593,34 +3598,32 @@ class GroundController {
         }
     
         // jump if you're trying to and able to
-        if (ground || ((leftWall || rightWall) && this.releasedJumpButtonWall)) {
+        if (ground || leftWall || rightWall) {
             this._jumpingForce = 0;
             this._jumpingDelta = 0;
 
             if (!this.jumping && up && this.releasedJumpButton) {
-                const jumpVelocity = (leftWall || rightWall) ? this.wallJumpVelocity : this.groundJumpVelocity;
-                let jumpDirectionX = 0;
-                let jumpDirectionY = 0;
+                const jumpVelocity = ground ? this.groundJumpVelocity : this.wallJumpVelocity;
 
                 this.releasedJumpButton = false;
-
-                console.log(ground);
     
                 if (ground) {
-                    jumpDirectionY = -1;
+                    this.jumpVector.x = 0;
+                    this.jumpVector.y = -1;
                 } else if (leftWall && rightWall) {
-                    jumpDirectionY = -1;
+                    this.jumpVector.x = 0;
+                    this.jumpVector.y = -1;
                 } else if (leftWall) {
-                    jumpDirectionX = 0.7071067811865476;
-                    jumpDirectionY = -0.7071067811865476;
+                    this.jumpVector.x = 0.7071067811865476;
+                    this.jumpVector.y = -0.7071067811865476;
                 } else if (rightWall) {
-                    jumpDirectionX = -0.7071067811865476;
-                    jumpDirectionY = -0.7071067811865476;
+                    this.jumpVector.x = -0.7071067811865476;
+                    this.jumpVector.y = -0.7071067811865476;
                 }
     
                 this.jumping = true;
-                this.velocity.x += jumpDirectionX * jumpVelocity;
-                this.velocity.y = jumpDirectionY * jumpVelocity;
+                this.velocity.x += this.jumpVector.x * jumpVelocity;
+                this.velocity.y = this.jumpVector.y * jumpVelocity;
             }
         }
 
@@ -3642,13 +3645,15 @@ class GroundController {
             this._jumpingForce = 1.0 / (progress * (progress + 2) + 1);
             this._jumpingForce *= 0.0042;
 
-            this.velocity.y -= integratedJumpingForce;
+            this.velocity.y += integratedJumpingForce * this.jumpVector.y;
+            this.velocity.x += integratedJumpingForce * this.jumpVector.x * 2;
             // client_player.body.velocity.y -= client_player.jumping_force * delta;
         } else {
             this._jumpingForce -= JUMP_ACCEL * DELTA;
             this._jumpingForce = Math.max(this._jumpingForce, 0);
 
-            this.velocity.y -= this._jumpingForce * DELTA;
+            this.velocity.y -= this._jumpingForce * DELTA * this.jumpVector.y;
+            this.velocity.x -= this._jumpingForce * DELTA * this.jumpVector.x * 2;
         }
 
         if (this.velocity.y >= 0) {

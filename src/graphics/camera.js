@@ -73,7 +73,7 @@ class Camera {
         if (Camera.remainingShakeDuration > 0) {
             Camera.remainingShakeDuration--;
 
-            // its okay if progress goes past 1 because it wraps around
+            // its okay if progress goes past 1 because it wraps around 
             const progress = (Camera.shakeDuration - Camera.remainingShakeDuration) / 30;
             const shake = Camera.shakeIntensity - Camera.shakeIntensity * progress * Camera.shakeFalloff;
 
