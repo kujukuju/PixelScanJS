@@ -12,5 +12,6 @@ const PixelScan = {
     Camera,
     Hash,
     DebugCanvas,
+    DynamicTree,
     extract,
 };

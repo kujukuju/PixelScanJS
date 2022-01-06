@@ -113,8 +113,6 @@ class World {
                     } else {
                         projectVelocityIfNecessary(stepNormal, velocity);
                     }
-
-                    // Renderer.debugCanvas.drawLine(stepCollisionPixel.x, stepCollisionPixel.y, stepCollisionPixel.x + stepNormal.x * 20, stepCollisionPixel.y + stepNormal.y * 20, 0xffffff);
                 } else {
                     // actual collision we can't resolve, for now stop here?
                     // paint_edges(collision_pixel.x, collision_pixel.y, velocity);
@@ -274,8 +272,6 @@ const getNormal = (world, aabb, pixel) => {
     center.y += aabb.height / 2;
     center.round();
 
-    Renderer.debugCanvas.drawRect(pixel.x, pixel.y, 1, 1, 0xffffff);
-
     // check for additional pixels on the side that this is colliding with
     // top wall
     if (pixel.y == aabb.y && !world.getPixel(pixel.x, pixel.y + 1)) {
@@ -339,7 +335,6 @@ const getNormal = (world, aabb, pixel) => {
 
     startPixel.copy(pixel);
     if (getNextWallPixel(world, startPixel, leftAngle, nextPixel)) {
-        Renderer.debugCanvas.drawRect(nextPixel.x, nextPixel.y, 1, 1, 0xff0000);
         // here we know that the nextPixel is valid because its only the second, so skip the corner check
         // ccw most
         let leftMostAngle = Math.atan2(nextPixel.y + pixelOffsets[0].y - startY, nextPixel.x + pixelOffsets[0].x - startX);
@@ -373,8 +368,7 @@ const getNormal = (world, aabb, pixel) => {
                 if (!validateCorners(startX, startY, nextPixel.x, nextPixel.y, leftMostAngle, rightMostAngle)) {
                     break;
                 }
-
-                Renderer.debugCanvas.drawRect(nextPixel.x, nextPixel.y, 1, 1, 0xff0000);
+                
 
                 let nextLeftMostAngle = Math.atan2(nextPixel.y + pixelOffsets[0].y - startY, nextPixel.x + pixelOffsets[0].x - startX);
                 let nextRightMostAngle = nextLeftMostAngle;
@@ -409,7 +403,6 @@ const getNormal = (world, aabb, pixel) => {
 
     startPixel.copy(pixel);
     if (getNextWallPixel(world, startPixel, rightAngle, nextPixel)) {
-        Renderer.debugCanvas.drawRect(nextPixel.x, nextPixel.y, 1, 1, 0xff0000);
         // here we know that the nextPixel is valid because its only the second, so skip the corner check
         // ccw most
         let leftMostAngle = Math.atan2(nextPixel.y + pixelOffsets[0].y - startY, nextPixel.x + pixelOffsets[0].x - startX);
@@ -443,8 +436,6 @@ const getNormal = (world, aabb, pixel) => {
                 if (!validateCorners(startX, startY, nextPixel.x, nextPixel.y, leftMostAngle, rightMostAngle)) {
                     break;
                 }
-
-                Renderer.debugCanvas.drawRect(nextPixel.x, nextPixel.y, 1, 1, 0xff0000);
 
                 let nextLeftMostAngle = Math.atan2(nextPixel.y + pixelOffsets[0].y - startY, nextPixel.x + pixelOffsets[0].x - startX);
                 let nextRightMostAngle = nextLeftMostAngle;
