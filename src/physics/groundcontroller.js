@@ -10,7 +10,7 @@ class GroundController {
     terminalFriction = 0.15;
     speed = 4;
     // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
-    groundNormalSlope = 0.8660254037844386;
+    groundNormalSlope = 0.6427876096865394;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
     wallNormalSlope = 0.8660254037844386;
     groundJumpVelocity = 5.4;
@@ -44,6 +44,10 @@ class GroundController {
             }
         }
 
+        // TODO temporary remove wall jumping
+        leftWall = false;
+        rightWall = false;
+
         let accelX = 0;
         if (left) {
             accelX -= this.accel;
@@ -52,7 +56,20 @@ class GroundController {
             accelX += this.accel;
         }
 
+        const accelVec = new Vec2(accelX, 0);
+        for (let i = 0; i < this.normals.length; i++) {
+            // if this isnt ground try and project your accel if its going into the normal
+            if (this.normals[i].y >= -this.groundNormalSlope) {
+                projectVelocityIfNecessary(this.normals[i], accelVec);
+            }
+        }
+        accelX = accelVec.x;
+
         const friction = ground ? this.friction : this.friction / 1;
+
+        for (let i = 0; i < this.normals.length; i++) {
+            Renderer.debugCanvas.drawLine(this.position.x, this.position.y, this.position.x + this.normals[i].x * 20, this.position.y + this.normals[i].y * 20, 0xffffff);
+        }
     
         // TODO when not on ground dont apply friction
         const initialVelocityX = this.velocity.x;
@@ -101,10 +118,10 @@ class GroundController {
                 } else if (leftWall && rightWall) {
                     jumpDirectionY = -1;
                 } else if (leftWall) {
-                    jumpDirectionX = 0.5;
+                    // jumpDirectionX = 0.5;
                     jumpDirectionY = -0.8660254037844386;
                 } else if (rightWall) {
-                    jumpDirectionX = -0.5;
+                    // jumpDirectionX = -0.5;
                     jumpDirectionY = -0.8660254037844386;
                 }
     

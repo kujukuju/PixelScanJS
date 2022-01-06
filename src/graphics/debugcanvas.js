@@ -7,6 +7,7 @@ class DebugCanvas extends PIXI.Graphics {
         color = color || 0;
         alpha = alpha === undefined ? 1 : alpha;
 
+        this.lineStyle(0);
         this.beginFill(color, alpha);
 
         super.drawRect(x, y, width, height);
@@ -22,7 +23,7 @@ class DebugCanvas extends PIXI.Graphics {
 
         this.moveTo(x1, y1);
         this.lineTo(x2, y2);
-        
+
         this.closePath();
     }
 

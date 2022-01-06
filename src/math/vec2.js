@@ -15,6 +15,10 @@ class Vec2 {
         return new Vec2(Math.cos(angle), Math.sin(angle));
     }
 
+    static set(x, y) {
+        return new Vec2(x, y);
+    }
+
     copy(vec) {
         this.x = vec.x;
         this.y = vec.y;
@@ -35,6 +39,15 @@ class Vec2 {
 
         return this;
     }
+
+    subtract(vec) {
+        this.x -= vec.x;
+        this.y -= vec.y;
+
+        return this;
+    }
+
+    sub = this.subtract;
 
     round() {
         this.x = Math.round(this.x);

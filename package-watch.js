@@ -8,6 +8,13 @@ const watched = {};
 // let changed = false;
 let writeQueued = false;
 
+const first = [
+    'aabb.js',
+    'hash.js',
+    'mat3.js',
+    'vec2.js',
+];
+
 const queueWrite = () => {
     if (writeQueued) {
         return;
@@ -70,9 +77,15 @@ const write = () => {
 
     // move main.js to the end
     const files = Object.keys(watched);
-    const mainIndex = files.findIndex(file => file.endsWith('main.js'));
-    const mainElement = files.splice(mainIndex, 1);
-    files.push(mainElement[0]);
+    for (let i = 0; i < files.length; i++) {
+        if (!first.find(name => files[i].endsWith(name))) {
+            continue;
+        }
+
+        files.unshift(files.splice(i, 1)[0]);
+    }
+    files.push(files.splice(files.findIndex(file => file.endsWith('main.js')), 1)[0]);
+
     for (let i = 0; i < files.length; i++) {
         const file = files[i];
 
