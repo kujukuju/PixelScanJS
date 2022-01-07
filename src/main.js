@@ -14,4 +14,5 @@ const PixelScan = {
     DebugCanvas,
     DynamicTree,
     extract,
+    getLinePixels,
 };

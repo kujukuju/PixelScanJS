@@ -3478,9 +3478,9 @@ class GroundController {
     terminalFriction = 0.15;
     speed = 4;
     // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
-    groundNormalSlope = 0.7071067811865476;
+    groundNormalSlope = 0.707;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
-    wallNormalSlope = 0.8660254037844386;
+    wallNormalSlope = 0.866;
     groundJumpVelocity = 5.4;
     wallJumpVelocity = 5.4 * 1.5;
     fallingFrames = 10;
@@ -3495,6 +3495,9 @@ class GroundController {
     jumpVector = new Vec2(0, 0);
 
     enableWallJumping = false;
+
+    leftGroundFrames = 0;
+    maximumLeftGroundFrames = 2;
 
     _jumpingForce = 0;
     _jumpingDelta = 0;
@@ -3521,6 +3524,14 @@ class GroundController {
                 rightWall = true;
             }
         }
+
+        if (ground) {
+            this.leftGroundFrames = 0;
+        } else {
+            this.leftGroundFrames++;
+        }
+
+        ground = this.leftGroundFrames <= this.maximumLeftGroundFrames;
 
         if (leftWall || rightWall) {
             this.slidingLeft = leftWall;
@@ -4340,6 +4351,109 @@ const extract = (application, texture) => {
 
     return pixels;
 };
+
+const getLinePixels = (x1, y1, x2, y2, inclusive) => {
+    x1 = Math.round(x1);
+    y1 = Math.round(y1);
+    x2 = Math.round(x2);
+    y2 = Math.round(y2);
+
+    // modified bresenham’s to handle reverse lines and vertical lines
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+
+    const pixels = [];
+    if (Math.abs(dx) >= Math.abs(dy)) {
+        let x = x1;
+        let y = y1;
+
+        if (x2 > x1) {
+            let p = 2 * dy - dx;
+            while (x < x2) {
+                if (p >= 0) {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    y = y + 1;
+                    p = p + 2 * dy - 2 * dx;
+                } else {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    p = p + 2 * dy;
+                }
+
+                x = x + 1;
+            }
+        } else {
+            let p = -2 * dy + dx;
+            while (x > x2) {
+                if (p >= 0) {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    y = y - 1;
+                    p = p - 2 * dy + 2 * dx;
+                } else {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    p = p - 2 * dy;
+                }
+
+                x = x - 1;
+            }
+        }
+    } else {
+        let x = x1;
+        let y = y1;
+
+        if (y2 > y1) {
+            let p = 2 * dx - dy;
+            while (y < y2) {
+                if (p >= 0) {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    x = x + 1;
+                    p = p + 2 * dx - 2 * dy;
+                } else {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    p = p + 2 * dx;
+                }
+
+                y = y + 1;
+            }
+        } else {
+            let p = -2 * dx + dy;
+            while (y > y2) {
+                if (p >= 0) {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    x = x - 1;
+                    p = p - 2 * dx + 2 * dy;
+                } else {
+                    const point = new Vec2(x, y);
+                    pixels.push(point);
+
+                    p = p - 2 * dx;
+                }
+
+                y = y - 1;
+            }
+        }
+    }
+
+    if (inclusive || (x1 == x2 && y1 == y2)) {
+        const point = new Vec2(x2, y2);
+        pixels.push(point);
+    }
+
+    return pixels;
+}
 const PixelScan = {
     FramedSprite,
     AABB,
@@ -4356,6 +4470,7 @@ const PixelScan = {
     DebugCanvas,
     DynamicTree,
     extract,
+    getLinePixels,
 };
 return PixelScan;
 })();

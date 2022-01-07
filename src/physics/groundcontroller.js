@@ -10,9 +10,9 @@ class GroundController {
     terminalFriction = 0.15;
     speed = 4;
     // the y component of the maximumly angled normal vector that you're able to walk on, default 30 degrees
-    groundNormalSlope = 0.7071067811865476;
+    groundNormalSlope = 0.707;
     // the x component of the maximumly angled normal vector that you're able to slide on, default 30 degrees
-    wallNormalSlope = 0.8660254037844386;
+    wallNormalSlope = 0.866;
     groundJumpVelocity = 5.4;
     wallJumpVelocity = 5.4 * 1.5;
     fallingFrames = 10;
@@ -27,6 +27,9 @@ class GroundController {
     jumpVector = new Vec2(0, 0);
 
     enableWallJumping = false;
+
+    leftGroundFrames = 0;
+    maximumLeftGroundFrames = 2;
 
     _jumpingForce = 0;
     _jumpingDelta = 0;
@@ -53,6 +56,14 @@ class GroundController {
                 rightWall = true;
             }
         }
+
+        if (ground) {
+            this.leftGroundFrames = 0;
+        } else {
+            this.leftGroundFrames++;
+        }
+
+        ground = this.leftGroundFrames <= this.maximumLeftGroundFrames;
 
         if (leftWall || rightWall) {
             this.slidingLeft = leftWall;

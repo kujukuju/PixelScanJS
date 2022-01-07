@@ -1,0 +1,39 @@
+{
+  "name": "#{PACKAGENAME}",
+  "version": "1.0.0",
+  "main": "main.js",
+  "description": "#{TITLE}",
+  "author": "Kuju",
+  "license": "MIT",
+  "build": {
+    "productName": "Game",
+    "appId": "com.websitename.app",
+    "win": {
+      "target": [
+        "portable"
+      ]
+    },
+    "portable": {
+      "artifactName": "game.exe"
+    },
+    "directories": {
+      "output": "output",
+      "app": ".",
+      "buildResources": "public/"
+    },
+    "files": [
+      "public/",
+      "main.js"
+    ]
+  },
+  "scripts": {
+    "server": "node server.js",
+    "start": "set NODE_ENV=dev && electron .",
+    "deploy": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^16.0.5",
+    "electron-builder": "^22.14.5",
+    "express": "^4.17.2"
+  }
+}
