@@ -13,6 +13,7 @@ const PixelScan = {
     Hash,
     DebugCanvas,
     DynamicTree,
+    BinaryHelper,
     extract,
     getLinePixels,
 };

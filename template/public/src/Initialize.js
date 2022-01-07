@@ -22,3 +22,4 @@ const PerlinNoise = PixelScan.PerlinNoise;
 const Hash = PixelScan.Hash;
 const DebugCanvas = PixelScan.DebugCanvas;
 const DynamicTree = PixelScan.DynamicTree;
+const BinaryHelper = PixelScan.BinaryHelper;
