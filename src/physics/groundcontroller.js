@@ -63,6 +63,7 @@ class GroundController {
             this.leftGroundFrames++;
         }
 
+        const realGround = ground;
         ground = this.leftGroundFrames <= this.maximumLeftGroundFrames;
 
         if (leftWall || rightWall) {
@@ -135,7 +136,7 @@ class GroundController {
         }
     
         // clear the jumping flag if you're not jumping
-        if (this.jumping && (!up || ground || leftWall || rightWall)) {
+        if (this.jumping && (!up || realGround)) {
             this.falling = true;
             this.jumping = false;
         }
