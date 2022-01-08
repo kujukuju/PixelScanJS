@@ -50,8 +50,6 @@ class Input {
 window.addEventListener('load', () => {
     Input.mousePosition = new Vec2();
 
-    
-
     window.addEventListener('keydown', event => {
         if (!event.key) {
             return true;
@@ -96,8 +94,8 @@ window.addEventListener('load', () => {
     }, true);
 
     window.addEventListener('mousemove', event => {
-        Input.mousePosition[0] = event.clientX;
-        Input.mousePosition[1] = event.clientY;
+        Input.mousePosition.x = event.clientX;
+        Input.mousePosition.y = event.clientY;
 
         return true;
     }, true);

@@ -668,6 +668,18 @@ class DebugCanvas extends PIXI.Graphics {
         this.closePath();
     }
 
+    drawCircle(x, y, radius, color, alpha) {
+        color = color || 0;
+        alpha = alpha === undefined ? 1 : alpha;
+    
+        this.lineStyle(0);
+        this.beginFill(color, alpha);
+    
+        super.drawCircle(x, y, radius);
+    
+        this.endFill();
+    }
+
     render(renderer) {
         super.render(renderer);
 
@@ -915,8 +927,6 @@ class Input {
 window.addEventListener('load', () => {
     Input.mousePosition = new Vec2();
 
-    
-
     window.addEventListener('keydown', event => {
         if (!event.key) {
             return true;
@@ -961,8 +971,8 @@ window.addEventListener('load', () => {
     }, true);
 
     window.addEventListener('mousemove', event => {
-        Input.mousePosition[0] = event.clientX;
-        Input.mousePosition[1] = event.clientY;
+        Input.mousePosition.x = event.clientX;
+        Input.mousePosition.y = event.clientY;
 
         return true;
     }, true);
@@ -3920,7 +3930,7 @@ class World {
         }
 
         const gravitySpeed = this.gravity.length();
-        const appliedGravity = Vec2.copy(this.gravity).normalize().multiply(Math.max(gravitySpeed - bodyFallingSpeed * bodyFallingSpeed, 0));
+        const appliedGravity = Vec2.copy(this.gravity).normalize().multiply(Math.max(gravitySpeed - bodyFallingSpeed * bodyFallingSpeed, 0)).multiply(controller.gravityScale);
         controller.velocity.add(appliedGravity);
 
         if (controller.velocity.length() === 0) {

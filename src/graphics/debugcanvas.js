@@ -27,6 +27,18 @@ class DebugCanvas extends PIXI.Graphics {
         this.closePath();
     }
 
+    drawCircle(x, y, radius, color, alpha) {
+        color = color || 0;
+        alpha = alpha === undefined ? 1 : alpha;
+    
+        this.lineStyle(0);
+        this.beginFill(color, alpha);
+    
+        super.drawCircle(x, y, radius);
+    
+        this.endFill();
+    }
+
     render(renderer) {
         super.render(renderer);
 

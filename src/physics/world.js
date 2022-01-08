@@ -50,7 +50,7 @@ class World {
         }
 
         const gravitySpeed = this.gravity.length();
-        const appliedGravity = Vec2.copy(this.gravity).normalize().multiply(Math.max(gravitySpeed - bodyFallingSpeed * bodyFallingSpeed, 0));
+        const appliedGravity = Vec2.copy(this.gravity).normalize().multiply(Math.max(gravitySpeed - bodyFallingSpeed * bodyFallingSpeed, 0)).multiply(controller.gravityScale);
         controller.velocity.add(appliedGravity);
 
         if (controller.velocity.length() === 0) {
