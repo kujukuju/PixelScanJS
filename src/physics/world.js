@@ -193,6 +193,30 @@ class World {
 
         return this.pixels[y * this.width + x];
     }
+
+    scanLine(start, end) {
+        const line = PixelScan.getLinePixels(start.x, start.y, end.x, end.y, true);
+    
+        for (let i = 0; i < line.length; i++) {
+            if (this.getPixel(line[i].x, line[i].y)) {
+                return line[i];
+            }
+        }
+    
+        return null;
+    };
+    
+    scanLineEmpty(start, end) {
+        const line = PixelScan.getLinePixels(start.x, start.y, end.x, end.y, true);
+    
+        for (let i = 0; i < line.length; i++) {
+            if (!this.getPixel(line[i].x, line[i].y)) {
+                return line[i];
+            }
+        }
+    
+        return null;
+    };
 }
 
 const paintEdges = (x, y, velocity) => {

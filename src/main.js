@@ -8,6 +8,7 @@ const PixelScan = {
     FPSTracker,
     CPUTracker,
     ParallaxSprite,
+    WaterShader,
     PerlinNoise,
     Camera,
     Hash,

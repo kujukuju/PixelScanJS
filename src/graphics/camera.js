@@ -2,6 +2,7 @@ class Camera {
     static position = new Vec2();
     static aabb = new AABB();
     static scale = new Vec2(1, 1);
+    static screen = new Vec2(window.innerWidth, window.innerHeight);
 
     static nextPosition = new Vec2();
     static nextScale = new Vec2(1, 1);
@@ -66,6 +67,13 @@ class Camera {
     static setCameraHeight(height) {
         Camera.cameraHeight = height;
     }
+
+    static getMousePosition() {
+        const percentX = Input.mousePosition.x / window.innerWidth;
+        const percentY = Input.mousePosition.y / window.innerHeight;
+    
+        return Vec2.set(Camera.aabb.x + Camera.aabb.width * percentX, Camera.aabb.y + Camera.aabb.height * percentY).round();
+    };
 
     static update() {
         let shakeX = 0;

@@ -69,6 +69,24 @@ const read = (file) => {
     }
 };
 
+const getAllClassNames = () => {
+    const classNames = [];
+
+    for (const filename in watched) {
+        const content = watched[filename];
+        const lines = content.split('\n');
+        for (let i = 0; i < lines.length; i++) {
+            if (lines[i].match(/^class [a-zA-Z0-9_]+[a-zA-Z0-9\. _]+\{$/gm)) {
+                const parts = lines[i].split(' ');
+                classNames.push(parts[1]);
+                break;
+            }
+        }
+    }
+
+    return classNames;
+};
+
 const write = () => {
     const file = path.join(__dirname, 'pixelscan.js');
 
@@ -96,6 +114,12 @@ const write = () => {
     data += 'return PixelScan;';
     data += '\n';
     data += '})();';
+    data += '\n';
+    const classNames = getAllClassNames();
+    for (let i = 0; i < classNames.length; i++) {
+        data += 'const ' + classNames[i] + ' = PixelScan.' + classNames[i] + ';';
+        data += '\n';
+    }
 
     fs.writeFileSync(file, data);
 

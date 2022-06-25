@@ -39,23 +39,34 @@ class Input {
     static KEY_SHIFT = 'shift';
     static KEY_SPACE = ' ';
 
+    static NONE = 0x0;
+    static DOWN = 0x1;
+    static DELTA_DOWN = 0x2;
+
     static keys = {};
 
-    static mouseDownLeft = false;
-    static mouseDownRight = false;
+    static mouseDownLeft = Input.NONE;
+    static mouseDownRight = Input.NONE;
 
-    static mousePosition = null;
+    static mousePosition = new Vec2();
+
+    static clear() {
+        Input.mouseDownLeft &= ~Input.DELTA_DOWN;
+        Input.mouseDownRight &= ~Input.DELTA_DOWN;
+        
+        for (const key in Input.keys) {
+            Input.keys[key] &= ~Input.DELTA_DOWN;
+        }
+    }
 }
 
 window.addEventListener('load', () => {
-    Input.mousePosition = new Vec2();
-
     window.addEventListener('keydown', event => {
         if (!event.key) {
             return true;
         }
 
-        Input.keys[event.key.toLowerCase()] = true;
+        Input.keys[event.key.toLowerCase()] = Input.DOWN | Input.DELTA_DOWN;
 
         return true;
     }, true);
@@ -73,10 +84,10 @@ window.addEventListener('load', () => {
 
     window.addEventListener('mousedown', event => {
         if (event.button === 0) {
-            Input.mouseDownLeft = true;
+            Input.mouseDownLeft = Input.DOWN | Input.DELTA_DOWN;
         }
         if (event.button === 2) {
-            Input.mouseDownRight = true;
+            Input.mouseDownRight = Input.DOWN | Input.DELTA_DOWN;
         }
 
         return true;
@@ -84,10 +95,10 @@ window.addEventListener('load', () => {
 
     window.addEventListener('mouseup', event => {
         if (event.button === 0) {
-            Input.mouseDownLeft = false;
+            Input.mouseDownLeft = Input.NONE;
         }
         if (event.button === 2) {
-            Input.mouseDownRight = false;
+            Input.mouseDownRight = Input.NONE;
         }
 
         return true;

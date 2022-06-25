@@ -19,6 +19,10 @@ class Vec2 {
         return new Vec2(x, y);
     }
 
+    static from(x, y) {
+        return new Vec2(x, y);
+    }
+
     copy(vec) {
         this.x = vec.x;
         this.y = vec.y;
